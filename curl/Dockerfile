@@ -1,26 +1,48 @@
-# Use Ubuntu 20.04 as the base image
-FROM ubuntu:20.04
-# Avoid prompts from apt
+FROM ubuntu:24.10
+
 ENV DEBIAN_FRONTEND=noninteractive
-# Update and install necessary packages
-RUN apt-get update && apt-get install -y \
-    wget \
-    curl \
+
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get -y update && apt-get -y install \
+    bc \
     build-essential \
-    gcc-arm-linux-gnueabihf \
-    g++-arm-linux-gnueabihf \
+    bzip2 \
+    bzr \
+    cmake \
+    cmake-curses-gui \
+    cpio \
+    curl \
+    device-tree-compiler \
+    git \
+    imagemagick \
+    libncurses5-dev \
+    libc6-dev \
+    locales \
+    make \
+    p7zip-full \
+    rsync \
+    sharutils \
+    scons \
+    tree \
+    unzip \
     vim \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-# Set up environment variables for cross-compilation
-ENV CROSS_COMPILE=arm-linux-gnueabihf-
-ENV CC=${CROSS_COMPILE}gcc
-ENV CXX=${CROSS_COMPILE}g++
-# Set the working directory
-WORKDIR /work
-# Copy the curl compilation script into the container
-COPY compile_static_curl.sh /work/
-# Make the script executable
-RUN chmod +x /work/compile_static_curl.sh
-# Run the compilation script
-CMD ["/work/compile_static_curl.sh"]
+    wget \
+    zip \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/workspace
+WORKDIR /root
+
+COPY support .
+
+COPY a30_toolchain-v1.0.tar.gz .
+RUN tar -xf ./a30_toolchain-v1.0.tar.gz -C /opt
+
+RUN cat ./setup-env.sh >> .bashrc
+
+VOLUME /root/workspace
+WORKDIR /root/workspace
+
+CMD ["/bin/bash"]
