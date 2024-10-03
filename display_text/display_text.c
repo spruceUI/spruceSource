@@ -9,7 +9,7 @@
 
 int main(int argc , char* argv[]) {
 	if (argc<3) {
-		puts("Usage: display_text image.png text delay textsize height side width R G B font_path bg_R bg_G bg_B bg_alpha");
+		puts("Usage: display_text image.png text delay textsize height side width R G B font_path bg_R bg_G bg_B bg_alpha image_scaling");
 		return 0;
 	}
 	
@@ -44,6 +44,8 @@ int main(int argc , char* argv[]) {
     uint8_t bgblue = argc>14 ? strtoul(argv[14], &endPtr, 16 ) : 16;
     uint8_t bgtrans = argc>15 ? strtoul(argv[15], &endPtr, 16 ) : 160;
 
+    float relative_scaling = argc>16 ? strtof(argv[16], NULL) : 1.0;
+
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_ShowCursor(0);
 
@@ -63,6 +65,8 @@ int main(int argc , char* argv[]) {
         new_h = img->h / w_ratio;
         new_w = FIXED_WIDTH;
     }
+    new_h = new_h * relative_scaling;
+    new_w = new_w * relative_scaling;
     
     SDL_Rect rtimg = {0};
     rtimg.x = (480 - new_w) / 2;
