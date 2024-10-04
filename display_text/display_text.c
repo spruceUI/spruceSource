@@ -42,8 +42,8 @@ int main(int argc , char* argv[]) {
     uint8_t bgred = argc>12 ? strtoul(argv[12], &endPtr, 16 ) : 16;
     uint8_t bggreen = argc>13 ? strtoul(argv[13], &endPtr, 16 ) : 16;
     uint8_t bgblue = argc>14 ? strtoul(argv[14], &endPtr, 16 ) : 16;
-    uint8_t bgtrans = argc>15 ? strtoul(argv[15], &endPtr, 16 ) : 160;
-
+    uint8_t bgtrans = argc>15 ? (uint8_t)((float) atoi(argv[15]) * 255.0/(float)100.0) : 160;
+    
     float relative_scaling = argc>16 ? strtof(argv[16], NULL) : 1.0;
 
 	SDL_Init(SDL_INIT_VIDEO);
