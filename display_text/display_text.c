@@ -9,7 +9,7 @@
 
 int main(int argc , char* argv[]) {
 	if (argc<3) {
-		puts("Usage: display_text image.png text delay textsize height side width R G B font_path bg_R bg_G bg_B bg_alpha image_scaling");
+		puts("Usage: display_text image.png text delay textsize height side width R G B font_path bg_R bg_G bg_B bg_alpha image_scaling (next-image.png scale height side)*");
 		return 0;
 	}
 	
@@ -43,7 +43,7 @@ int main(int argc , char* argv[]) {
     uint8_t bggreen = argc>13 ? strtoul(argv[13], &endPtr, 16 ) : 16;
     uint8_t bgblue = argc>14 ? strtoul(argv[14], &endPtr, 16 ) : 16;
     uint8_t bgtrans = argc>15 ? (uint8_t)((float) atoi(argv[15]) * 255.0/(float)100.0) : 160;
-    
+
     float relative_scaling = argc>16 ? strtof(argv[16], NULL) : 1.0;
 
 	SDL_Init(SDL_INIT_VIDEO);
@@ -51,6 +51,8 @@ int main(int argc , char* argv[]) {
 
     SDL_Window* window = SDL_CreateWindow("Main", 0, 0, 480, 640, SDL_WINDOW_SHOWN);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window,-1,SDL_RENDERER_ACCELERATED|SDL_RENDERER_PRESENTVSYNC);
+
+
 	SDL_Surface* img = IMG_Load(path);
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer,img);
     SDL_FreeSurface(img);
@@ -75,13 +77,157 @@ int main(int argc , char* argv[]) {
     rtimg.h = new_h;
     
 	SDL_RenderCopyEx(renderer, texture, NULL, &rtimg, 270, NULL, SDL_FLIP_NONE);
+    SDL_DestroyTexture(texture);
+
+    int max_arg = 17;
+    while (argc>max_arg){
+	    strncpy(path,argv[max_arg],512);
+	    if (access(path, F_OK)!=0) return 0;
+        max_arg++;
+        relative_scaling = argc>max_arg ? strtof(argv[max_arg], NULL) : 1.0;
+        max_arg++;
+        img = IMG_Load(path);
+        texture = SDL_CreateTextureFromSurface(renderer,img);
+        SDL_FreeSurface(img);
+        h_ratio = ((float)img->h/FIXED_HEIGHT);
+        w_ratio = ((float)img->w/FIXED_WIDTH);
+        if (h_ratio > w_ratio){
+            new_h = FIXED_HEIGHT;
+            new_w = img->w / h_ratio;
+        }
+        else{
+            new_h = img->h / w_ratio;
+            new_w = FIXED_WIDTH;
+        }
+        new_h = new_h * relative_scaling;
+        new_w = new_w * relative_scaling;
+        rtimg.w = new_w;
+        rtimg.h = new_h;
+        if (argc > max_arg){
+            if (strcmp( argv[max_arg], "top" ) == 0){
+                rtimg.x = (new_h - new_w) / 2;
+            }
+            else if (strcmp( argv[max_arg], "bottom" ) == 0){
+                rtimg.x = (480 - new_w) + ((new_w - new_h)/2);
+            }
+            else {
+                rtimg.x = (480 - new_w) / 2;
+            }     
+        }
+        max_arg++;
+        if (argc > max_arg){
+            if (strcmp( argv[max_arg], "left" ) == 0){
+                rtimg.y = (640 - new_h) - ((new_w - new_h)/2);
+            }
+            else if (strcmp( argv[max_arg], "right" ) == 0){
+                rtimg.y = ((new_w - new_h)/2);
+            }
+            else {
+                rtimg.y = (640 - new_h) / 2;
+            }
+        }
+        max_arg++;
+        SDL_RenderCopyEx(renderer, texture, NULL, &rtimg, 270, NULL, SDL_FLIP_NONE);
+        SDL_DestroyTexture(texture);
+    }
 
     TTF_Init();
     TTF_Font* Font = TTF_OpenFont(font_path, textsize);
     if(Font == NULL){ printf("Font loading failed: %s\n", TTF_GetError()); }
-    printf("color %u %u %u\n", red, green, blue);
+    int test_w, test_h;
+    if ((TTF_SizeUTF8(Font, message, &test_w, &test_h) < 0) || !width) {
+        printf("Text has zero width\n");
+        return 0;
+    }
+    int lineheight = test_h;
+    char * start_line = message;
+    char * end_line = start_line;
+    char * next_line = start_line;
+    char * test_ptr = start_line;
+    char tmp_char;
+    
+    int numLines = 0;
+    do {
+        while (*test_ptr != ' ' && *test_ptr != '\n' && *test_ptr != '\0'){
+            test_ptr++;
+        }
+        tmp_char = *test_ptr;
+        *test_ptr = '\0';
+        TTF_SizeText(Font, start_line, &test_w, &test_h);
+        *test_ptr = tmp_char;
+        if (test_w > width){
+            if (start_line != end_line){
+                *end_line = '\n';
+                numLines++;
+                end_line++;
+                start_line = end_line;
+            }
+            else {
+                if (*test_ptr != '\0'){
+                    *test_ptr = '\n';
+                    test_ptr++;
+                    start_line = test_ptr;
+                }
+                numLines++;
+                end_line = test_ptr;
+            }
+        }
+        else {
+            switch ( *test_ptr ) {
+                case ' ':
+                    end_line = test_ptr;
+                    test_ptr++;
+                    break;
+                case '\n':
+                    numLines++;
+                    test_ptr++;
+                    end_line = test_ptr;
+                    start_line = test_ptr;
+                    break;
+                case '\0':
+                    numLines++;
+                    end_line = test_ptr;
+                    break;
+            }
+        }
+    } while (*end_line != '\0');
+    int lineskip;
+    lineskip = TTF_FontLineSkip(Font);
+    int text_height = numLines * lineheight;
+    // Create a new surface for centered text
+    SDL_Surface* centeredSurface = SDL_CreateRGBSurface(0, width, text_height, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
     SDL_Color color = {red, green, blue, 255};
-    SDL_Surface* surfaceMessage = TTF_RenderText_Blended_Wrapped(Font, message, color, width);
+    int y = 0;
+    int new_text_width;
+    char * next;
+    char * line = message;
+    next = strchr(line, (int)'\n');
+    if (next != NULL) *next++ = '\0';
+    while (line != NULL) {
+        SDL_Surface* lineSurface = TTF_RenderText_Blended(Font, line, color);
+        if ((width) < lineSurface->w){
+            new_text_width = (width);
+        }
+        else{
+            new_text_width = lineSurface->w;
+        }
+        SDL_Rect lineRect = {(width - new_text_width) / 2, y, new_text_width, lineSurface->h};
+        SDL_BlitScaled(lineSurface, NULL, centeredSurface, &lineRect);
+        do{
+            y += lineSurface->h;
+            line = next;
+            if (line != NULL){
+                next = strchr(line, (int)'\n');
+                if (next != NULL) *next++ = '\0';
+            }
+        } while (line != NULL && strlen(line) == 0 ) ;
+        SDL_FreeSurface(lineSurface);
+    }
+
+    SDL_Surface* surfaceMessage = centeredSurface;
+    surfaceMessage->h = y;
+
+    //SDL_Surface* surfaceMessage = TTF_RenderText_Blended_Wrapped(Font, message, color, width);
 
     int textheight;
     if (argc > 5){
@@ -154,7 +300,7 @@ int main(int argc , char* argv[]) {
         }
     }
 	
-	SDL_DestroyTexture(texture);
+	
     SDL_DestroyTexture(messageBGTexture);
     SDL_DestroyTexture(messageTexture);
 	SDL_DestroyRenderer(renderer);
