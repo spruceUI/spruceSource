@@ -32,6 +32,7 @@ int main(int argc , char* argv[]) {
 
     char tmp_path_target[128];
     char tmp_path_destination[128];
+    
     for(uint8_t i = 0; i < 10; i++)
     {
         strcpy(tmp_path_target, argv[1]);
@@ -42,9 +43,12 @@ int main(int argc , char* argv[]) {
         strcat(tmp_path_destination, icons[i]);
         strcat(tmp_path_destination, ".png");
         SDL_Surface* img = IMG_Load(tmp_path_target);
-        SDL_Rect lineRect = {(img->w - surfaceMessage->w)>>1, (img->h - surfaceMessage->h)>>1, surfaceMessage->w, surfaceMessage->h};
-        SDL_BlitSurface(surfaceMessage, NULL, img, &lineRect);
-        IMG_SavePNG(img, tmp_path_destination);
+        SDL_Rect imgRect = {0, 0, img->w, img->h};
+        SDL_Surface* destinationImg = SDL_CreateRGBSurface(0, img->w + surfaceMessage->w, img->h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+        SDL_BlitSurface(img, NULL, destinationImg, &imgRect);
+        SDL_Rect textRect = {img->w, (img->h - surfaceMessage->h)>>1, surfaceMessage->w, surfaceMessage->h};
+        SDL_BlitSurface(surfaceMessage, NULL, destinationImg, &textRect);
+        IMG_SavePNG(destinationImg, tmp_path_destination);
         SDL_FreeSurface(img);
     }
 	return 0;
