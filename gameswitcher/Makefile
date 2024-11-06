@@ -1,4 +1,4 @@
-TARGET  = switcher
+TARGET  = switcher fbfixcolor
 CROSS   = arm-linux-
 CXXFLAGS  = -I/opt/staging_dir/target/usr/include/SDL2 
 CXXFLAGS += -pthread -Ofast
@@ -9,7 +9,7 @@ WARMINGS += -Wold-style-cast -Wmissing-declarations
 
 export PATH=/opt/a30/bin:$(shell echo $$PATH)
 
-all: $(TARGET) fbfixcolor
+all: $(TARGET)
 
 fbfixcolor: fbfixcolor.c
 	$(CROSS)g++  fbfixcolor.c -o fbfixcolor $(CXXFLAGS) $(LDFLAGS)
@@ -17,8 +17,8 @@ fbfixcolor: fbfixcolor.c
 SDL_rotozoom.o: SDL_rotozoom.c
 	$(CROSS)g++ -c SDL_rotozoom.c $(CXXFLAGS) $(LDFLAGS)
 
-$(TARGET): SDL_rotozoom.o $(wildcard *.cpp) $(wildcard *.h)
-	$(CROSS)g++ *.cpp *.o -o $(TARGET) $(CXXFLAGS) $(LDFLAGS) $(WARMINGS)
+switcher: SDL_rotozoom.o $(wildcard *.cpp) $(wildcard *.h)
+	$(CROSS)g++ *.cpp *.o -o switcher $(CXXFLAGS) $(LDFLAGS) $(WARMINGS)
 
 clean:
 	rm -rf $(TARGET) *.o
