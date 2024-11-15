@@ -6,3 +6,4 @@ input_helpers/joystickinput
 input_helpers/setsharedmem
 input_helpers/setlcdbl
 input_helpers/sendevent
+/.vscode

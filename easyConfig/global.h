@@ -23,6 +23,7 @@ namespace global
     extern map<string, string> aliases;
 
     string replaceAliases(const string & s);
+    string replaceAliases(const string & s, unsigned int index, const string & value);
 
 } // namespace constants
 

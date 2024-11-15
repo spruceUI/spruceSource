@@ -93,7 +93,7 @@ SettingItem::SettingItem(
     
     if (options_.size() < 2 || displayValues_.size() < 2 ||
         options_.size() != displayValues_.size() ||
-        (commands_.size() > 0 && commands_.size() != options_.size())) {
+        (commands_.size() > 1 && commands_.size() != options_.size())) {
         errorMessage_ = "invalid number of options or commands " + commands_.size();
         return;
     } 
@@ -171,8 +171,8 @@ void SettingItem::updateTextures() {
         }
 
         // get new info text and create texture
-        string cmd = global::replaceAliases(infoCommandString_);
-        minorText_ = exec(cmd + " " + std::to_string(selectedIndex_));
+        string cmd = global::replaceAliases(infoCommandString_, selectedIndex_, selectedValue_);
+        minorText_ = exec(cmd);
         if (!minorText_.empty()) {
             minorTextTexture_ = new TextTexture(
                 minorText_, 

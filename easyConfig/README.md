@@ -10,7 +10,6 @@ Usage: easyConfig config_file [-t title] [-p index] [-o]
 -o:     generate options only
 -h,--help       show this help message.
 
-
 UI control: L1/R1: Select group, Up/Down: Select item, Left/Right/A: Change value, B: Save and exit, Select: Cancel and exit
 
 The config file should contains lines of config settings, in the following format:
@@ -33,13 +32,21 @@ Minor text can be added to a setting item to show additional information to user
 
 @"This is minor text"
 
-If UPDATE_COMMAND exists, it will be executed when the corresponding setting value is changed by user with the 0-based index of the new setting value. The command should print new information to stdout to update the minor text.
+If there is only one command in COMMANDS field, this will be general command and will be executed everytime when the setting value is changed.
+
+If UPDATE_COMMAND exists, it will be executed when the corresponding setting value is changed by user. The command should print new information to stdout to update the minor text.
+
+You can define alias in the begining of the config file and use them to represent long commands in fields CURRENT_VALUE, COMMANDS and UPDATE_COMMAND. To define an alias insert line with the following format:
+
+$ALIAS_NAME=long string to replaced$
+
+And to use the alias in a command replace the string to be replaced with the syntex $ALIAS_NAME$. Also you can use predefined alias _VALUE_ and _INDEX_ to represent the current selected value and its zero-based index of the setting item.
 
 Dynamic information text can be added as single item, which should be a command to be executed on start. The command should print output to stdout to set the information text. To define an information text add a line with the following format
 
 %"the_commond_to_run_on_start.sh"
 
-Setting items can be organized into groups, which displayed as multiple tags in config window. To define a group use insert line with the following format:
+Setting items can be organized into groups, which displayed as multiple tags in config window. To define a group insert line with the following format:
 
 [GROUP_NAME] [OPTIONAL_OUTPUT_FILENAME]
 
