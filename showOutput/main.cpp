@@ -58,10 +58,14 @@ private:
 // global variables used in main.cpp
 string programName;
 string resourcePath = "res/";
+string titleText = "";
+string instructionText = "\u2191\u2193 Scroll   [Select] Exit";
 int fontSize = 20;
-size_t columns = 53; // unused
+size_t columns = 53;
 size_t rows = 10;   // unused
+SDL_Window *window;
 TextTexture* titleTexture = nullptr;
+TextTexture* instructionTexture = nullptr;
 vector<IncomingLine> incomingLines;
 mutex incomingLines_mutex;
 size_t startIndex = 0;
@@ -69,8 +73,28 @@ size_t endIndex = 0;
 size_t maxDisplayIndex = 0;
 SDL_KeyCode downButton = SDLK_UNKNOWN;
 int keyHoldWaitingTick = 0;
+bool isNoInteraction = false;
+bool isShowTitle = false;
+bool isExitOnEOF = false;
+bool isShowInstruction = false;
+bool isWordWrap = false;
+unsigned int exitWaitTime = 0;
 
 namespace {
+    void printUsage()
+    {
+        cout << "Usage: " << programName << " [-d] [-f n] [-h|--help] [-i] [-t title] [-w] [-x n]" << endl;
+        cout << R"_(
+-d:         disable useer interaction.
+-f:         specify font size as n (default is 20).
+-h, --help: show this usage help message.
+-i:         display instruction in the output window.
+-t:         display title in the output window.
+-w:         word-wrap when a line is overflow.
+-x:         exit after n second when EOF is read.
+)_";
+    }
+    
     void printErrorAndExit(string message, string extraMessage = "")
 	{
 		cerr << programName << ": " << message;
@@ -81,20 +105,95 @@ namespace {
 		exit(0);
 	}
 
+	void printErrorUsageAndExit(string message, string extraMessage = "")
+    {
+		cerr << programName << ": " << message;
+		if (!extraMessage.empty())
+			cerr << extraMessage;
+		cerr << endl << endl;
+		printUsage();
+		exit(0);
+    }
+
 	void handleOptions(int argc, char *argv[])
     {
         // get program name
 		programName = File_utils::getFileName(argv[0]);
 
+        int i = 1;
+		while (i < argc)
+        {
+			auto option = argv[i];
+            if (strcmp(option, "-d") == 0)
+            {
+                isNoInteraction = true;
+                i++;
+            } 
+            else if (strcmp(option, "-f") == 0)
+            {
+				if (i == argc - 1) printErrorUsageAndExit("-f: Missing option value");
+                int n = atoi(argv[i+1]);
+                if (n <= 0) printErrorUsageAndExit("-f: positive integer option expected");
+                fontSize = n;
+                i += 2;
+            } 
+            else if (strcmp(option, "-h") == 0 || strcmp(option, "--help") == 0)
+            {
+                printUsage();
+                exit(0);
+            } 
+            else if (strcmp(option, "-i") == 0)
+            {
+                isShowInstruction = true;
+                i++;
+            } 
+            else if (strcmp(option, "-t") == 0)
+            {
+				if (i == argc - 1) printErrorUsageAndExit("-t: Missing option value");
+                titleText = argv[i+1];
+                if (titleText.empty()) printErrorUsageAndExit("-t: Title can't ne empty");
+                isShowTitle = true;
+                i += 2;
+            }
+            else if (strcmp(option, "-w") == 0)
+            {
+                isWordWrap = true;
+                i++;
+            }
+            else if (strcmp(option, "-x") == 0)
+            {
+				if (i == argc - 1) printErrorUsageAndExit("-x: Missing option value");
+                int n = atoi(argv[i+1]);
+                if (n <= 0) printErrorUsageAndExit("-x: positive integer option expected");
+                exitWaitTime = static_cast<unsigned int>(n);
+                isExitOnEOF = true;
+                i += 2;
+            } 
+            else
+            {
+                printErrorUsageAndExit("Invalue option: ", option);
+            }
+        }
     }
 	void prepareTextures()
     {
-        titleTexture = new TextTexture(
-            "< Output >", 
-            global::font,
-            global::text_color,
-            TextureAlignment::topCenter
-        );
+        if (isShowTitle) {
+            titleTexture = new TextTexture(
+                titleText, 
+                global::font,
+                global::text_color,
+                TextureAlignment::topCenter
+            );
+        }
+
+        if (isShowInstruction) {
+            instructionTexture = new TextTexture(
+                instructionText, 
+                global::font,
+                global::text_color,
+                TextureAlignment::topCenter
+            );
+        }
     }
 
     // try read text from input stream beffer until no input, or read '\n' or '\r' 
@@ -114,6 +213,7 @@ namespace {
             if (ch == '\n') { newLine = true; break; }
             if (ch == '\r') { carriageReturn = true; break; }
             text.append(1, ch);
+            if (isWordWrap && text.length() == columns) { newLine = true; break; }
         }
 
         return readAny;
@@ -131,6 +231,10 @@ namespace {
         // handle input from stdin
         while (true)
         {
+            // check for EOF
+            cin.peek();
+            if (cin.eof()) break;
+
             // try read some text
             if (tryGetText(cin, line, isNewLine, isCarriageReturn))
             {
@@ -170,10 +274,20 @@ namespace {
     {
         int marginTop = 10;
         int offsetY = marginTop;
+        int maxHeight = global::SCREEN_WIDTH;
 
         // render title
-        titleTexture->render(0, offsetY);
-        offsetY += titleTexture->getHeight();
+        if (isShowTitle) {
+            titleTexture->render(0, offsetY);
+            offsetY += titleTexture->getHeight();
+        }
+
+        // render instruction
+        if (isShowInstruction) {
+            int h = instructionTexture->getHeight();
+            instructionTexture->render(0, global::SCREEN_WIDTH - h);
+            maxHeight -= h;
+        }
 
         // get total line number
         incomingLines_mutex.lock();
@@ -203,13 +317,30 @@ namespace {
             }
 
             // update start index if more new lines to show
-            if (offsetY > global::SCREEN_WIDTH) {
+            if (offsetY > maxHeight) {
                 if (maxDisplayIndex < size - 1 && i < size - 1) {
                     startIndex++;
                 }
                 break;
             }
         }
+    }
+
+    void exitProgram() 
+    {
+        // clear screen
+        SDL_SetRenderDrawColor(global::renderer, 40, 40, 40, 255);
+        SDL_RenderClear(global::renderer);
+        SDL_RenderPresent(global::renderer);
+
+        // release resource
+        SDL_DestroyRenderer(global::renderer);
+        TTF_CloseFont(global::font);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+
+        // always return zero
+        exit(0);
     }
 
     void keyPress(const SDL_Event &event)
@@ -253,17 +384,20 @@ namespace {
             // button R1 (Backspace key)
             case SDLK_BACKSPACE:
                 break;
+            // button START
+            case SDLK_RETURN:
+                break;
         }
 
         // button B (Left control key)
         if (event.key.keysym.mod == KMOD_LCTRL)
         {
-            SDL_SetRenderDrawColor(global::renderer, 40, 40, 40, 255);
-            SDL_RenderClear(global::renderer);
-            SDL_RenderPresent(global::renderer);
-            exit(0);
         }
-    
+        // button SELECT
+        else if (event.key.keysym.mod == KMOD_RCTRL)
+		{
+            exitProgram();
+		}
     }
 
     void keyRelease(const SDL_Event &event) {
@@ -319,8 +453,11 @@ int main(int argc, char *argv[])
 	// Init font
 	if (TTF_Init() == -1)
 		printErrorAndExit("TTF_Init failed: ", SDL_GetError());
-
-	global::font = TTF_OpenFont((resourcePath + "./SourceCodePro-Regular.ttf").c_str(), fontSize * 2);
+    string fontPath = File_utils::getPath(argv[0]);
+    if (fontPath.empty()) fontPath = '/';
+    if (fontPath.back() != '/') fontPath += '/';
+    fontPath += resourcePath + "SourceCodePro-Regular.ttf"; 
+	global::font = TTF_OpenFont(fontPath.c_str(), fontSize * 2);
 	if (global::font == nullptr)
 		printErrorAndExit("Font loading failed: ", TTF_GetError());
 
@@ -328,11 +465,17 @@ int main(int argc, char *argv[])
 	SDL_ShowCursor(SDL_DISABLE);
 
 	// Create window and renderer
-	SDL_Window *window = SDL_CreateWindow("Main", 0, 0, global::SCREEN_WIDTH, global::SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow("Main", 0, 0, global::SCREEN_WIDTH, global::SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	global::renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
 	if (global::renderer == nullptr)
 		printErrorAndExit("Renderer creation failed");
 
+    // compute number of columns based on font and font size 
+    TextTexture *t = new TextTexture("X", global::font, global::text_color);
+    columns = static_cast<unsigned int>(global::SCREEN_HEIGHT / t->getWidth());
+    delete t;
+
+    // build title and instruction textures
     prepareTextures();
 
     // initialize the first line
@@ -352,10 +495,10 @@ int main(int argc, char *argv[])
 			switch (event.type)
 			{
 			case SDL_KEYDOWN:
-				keyPress(event);
+				if (!isNoInteraction) keyPress(event);
 				break;
 			case SDL_KEYUP:
-				keyRelease(event);
+				if (!isNoInteraction) keyRelease(event);
 				break;
 			case SDL_QUIT:
 				return 0;
@@ -373,16 +516,24 @@ int main(int argc, char *argv[])
 		SDL_Delay(20);
         
         // handle key hold every 5 ticks
-        tick++;
-        if (tick == 5) {
-            tick = 0;
-            checkKeyHold();
+        if (!isNoInteraction) {
+            tick++;
+            if (tick == 5) {
+                tick = 0;
+                checkKeyHold();
+            }
+        }
+
+        // exit on EOF
+        if (isExitOnEOF && cin.eof() && 
+            maxDisplayIndex == incomingLines.size() - 1) 
+        {
+            sleep(exitWaitTime);   
+            break;
         }
     }
 
-	SDL_DestroyRenderer(global::renderer);
-	TTF_CloseFont(global::font);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
+    exitProgram();
+
 	return 0;
 }
