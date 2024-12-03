@@ -164,7 +164,7 @@ namespace {
             {
 				if (i == argc - 1) printErrorUsageAndExit("-x: Missing option value");
                 int n = atoi(argv[i+1]);
-                if (n <= 0) printErrorUsageAndExit("-x: positive integer option expected");
+                if (n < 0) printErrorUsageAndExit("-x: non-negative integer option expected");
                 exitWaitTime = static_cast<unsigned int>(n);
                 isExitOnEOF = true;
                 i += 2;
