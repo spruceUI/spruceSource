@@ -78,17 +78,23 @@ bool isShowTitle = false;
 bool isExitOnEOF = false;
 bool isShowInstruction = false;
 bool isWordWrap = false;
+bool isUseKeyword = false;
+bool isPrintOutput = false;
 unsigned int exitWaitTime = 0;
+string keyword = "";
+bool isKeywordMatched = false;
 
 namespace {
     void printUsage()
     {
-        cout << "Usage: " << programName << " [-d] [-f n] [-h|--help] [-i] [-t title] [-w] [-x n]" << endl;
+        cout << "Usage: " << programName << " [-d] [-f n] [-h|--help] [-i] [-k KEYWORD] [-p] [-t title] [-w] [-x n]" << endl;
         cout << R"_(
 -d:         disable useer interaction.
 -f:         specify font size as n (default is 20).
 -h, --help: show this usage help message.
 -i:         display instruction in the output window.
+-k:         exit when KEYWORD is received from stdin.
+-p:         also print received text to stdout.
 -t:         display title in the output window.
 -w:         word-wrap when a line is overflow.
 -x:         exit after n second when EOF is read.
@@ -147,6 +153,19 @@ namespace {
                 isShowInstruction = true;
                 i++;
             } 
+            else if (strcmp(option, "-k") == 0)
+            {
+				if (i == argc - 1) printErrorUsageAndExit("-k: Missing option value");
+                keyword = argv[i+1];
+                if (keyword.empty()) printErrorUsageAndExit("-k: Keyword can't ne empty");
+                isUseKeyword = true;
+                i += 2;
+            }
+            else if (strcmp(option, "-p") == 0)
+            {
+                isPrintOutput = true;
+                i++;
+            }
             else if (strcmp(option, "-t") == 0)
             {
 				if (i == argc - 1) printErrorUsageAndExit("-t: Missing option value");
@@ -196,6 +215,23 @@ namespace {
         }
     }
 
+    void exitProgram() 
+    {
+        // clear screen
+        SDL_SetRenderDrawColor(global::renderer, 40, 40, 40, 255);
+        SDL_RenderClear(global::renderer);
+        SDL_RenderPresent(global::renderer);
+
+        // release resource
+        SDL_DestroyRenderer(global::renderer);
+        TTF_CloseFont(global::font);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+
+        // always return zero
+        exit(0);
+    }
+
     // try read text from input stream beffer until no input, or read '\n' or '\r' 
     bool tryGetText(istream & is, string & text, bool & newLine, bool & carriageReturn) {
         char ch;
@@ -238,7 +274,14 @@ namespace {
             // try read some text
             if (tryGetText(cin, line, isNewLine, isCarriageReturn))
             {
-                cout << line;
+                // check for keyword
+                if (isUseKeyword && line == keyword) 
+                {
+                    isKeywordMatched = true;
+                    break;
+                }
+
+                if (isPrintOutput) cout << line;
 
                 // add new text to line
                 incomingLines_mutex.lock();
@@ -248,7 +291,7 @@ namespace {
                 // add new line if '\n' is read
                 if (isNewLine) 
                 {
-                    cout << endl;
+                    if (isPrintOutput) cout << endl;
                     incomingLines_mutex.lock();
                     incomingLines.push_back(IncomingLine(""));
                     incomingLines_mutex.unlock();
@@ -257,7 +300,7 @@ namespace {
                 // clear last line if '\r' is read
                 if (isCarriageReturn) 
                 {
-                    cout << '\r';
+                    if (isPrintOutput) cout << '\r';
                     incomingLines_mutex.lock();
                     incomingLines.back().setText("");
                     incomingLines_mutex.unlock();
@@ -324,23 +367,6 @@ namespace {
                 break;
             }
         }
-    }
-
-    void exitProgram() 
-    {
-        // clear screen
-        SDL_SetRenderDrawColor(global::renderer, 40, 40, 40, 255);
-        SDL_RenderClear(global::renderer);
-        SDL_RenderPresent(global::renderer);
-
-        // release resource
-        SDL_DestroyRenderer(global::renderer);
-        TTF_CloseFont(global::font);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-
-        // always return zero
-        exit(0);
     }
 
     void keyPress(const SDL_Event &event)
@@ -501,7 +527,7 @@ int main(int argc, char *argv[])
 				if (!isNoInteraction) keyRelease(event);
 				break;
 			case SDL_QUIT:
-				return 0;
+				exitProgram();
 				break;
 			}
 		}
@@ -531,6 +557,9 @@ int main(int argc, char *argv[])
             sleep(exitWaitTime);   
             break;
         }
+
+        // exit on matching keyword
+        if (isUseKeyword && isKeywordMatched) break;
     }
 
     exitProgram();
