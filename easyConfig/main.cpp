@@ -662,15 +662,15 @@ Config file is updated with new values when program exit.
 
         // create L and R button textures
         buttonLTexture = new TextTexture(
-            " \u24C1", 
+            " \u24C1 Prev", 
             global::font,
-            global::text_color,
+            global::minor_text_color,
             TextureAlignment::topLeft
         );
         buttonRTexture = new TextTexture(
-            "\u24C7 ", 
+            "Next \u24C7 ", 
             global::font,
-            global::text_color,
+            global::minor_text_color,
             TextureAlignment::topRight
         );
     }
