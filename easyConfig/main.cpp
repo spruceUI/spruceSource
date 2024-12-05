@@ -51,6 +51,8 @@ ImageTexture* runOnTexture = nullptr;
 ImageTexture* runOffTexture = nullptr;
 bool isShowTitle = false;
 bool isShowSinglePage = false;
+SDL_KeyCode downButton = SDLK_UNKNOWN;
+int keyHoldWaitingTick = 0;
 
 namespace {
     class BracketedString {
@@ -787,6 +789,9 @@ Config file is updated with new values when program exit.
     }
 
     void ScrollLeft() {
+        auto curr = selectedGroupIndex;
+        auto next = selectedGroupIndex < settingGroups.size() - 1 ? 
+            selectedGroupIndex + 1 : 0;
         double step = 1;
         while (step > 0) {
             SDL_RenderClear(global::renderer);
@@ -796,9 +801,9 @@ Config file is updated with new values when program exit.
             int offsetX = static_cast<int>(-global::SCREEN_HEIGHT * easing);
             renderAllSettings(offsetX, false);
 
-            selectedGroupIndex++;
+            selectedGroupIndex = next;
             renderAllSettings(offsetX + global::SCREEN_HEIGHT, false, false);
-            selectedGroupIndex--;
+            selectedGroupIndex = curr;
 
             SDL_RenderPresent(global::renderer);
             SDL_Delay(30);
@@ -808,6 +813,9 @@ Config file is updated with new values when program exit.
     }
 
     void ScrollRight() {
+        auto curr = selectedGroupIndex;
+        auto prev = selectedGroupIndex > 0 ? 
+            selectedGroupIndex - 1 : settingGroups.size() -1;
         double step = 1;
         while (step > 0) {
             SDL_RenderClear(global::renderer);
@@ -817,9 +825,9 @@ Config file is updated with new values when program exit.
             int offsetX = static_cast<int>(global::SCREEN_HEIGHT * easing);
             renderAllSettings(offsetX, false);
 
-            selectedGroupIndex--;
+            selectedGroupIndex = prev;
             renderAllSettings(offsetX - global::SCREEN_HEIGHT, false, false);
-            selectedGroupIndex++;
+            selectedGroupIndex = curr;
 
             SDL_RenderPresent(global::renderer);
             SDL_Delay(30);
@@ -849,6 +857,8 @@ Config file is updated with new values when program exit.
                 group->setSelectedIndex(index - 1);
                 updateItemIndexTexture();
             }
+            downButton = SDLK_UP;
+            keyHoldWaitingTick = 3;
             break;
 		// button DOWN (Down arrow key)
 		case SDLK_DOWN:
@@ -856,6 +866,8 @@ Config file is updated with new values when program exit.
                 group->setSelectedIndex(index + 1);
                 updateItemIndexTexture();
             }
+            downButton = SDLK_DOWN;
+            keyHoldWaitingTick = 3;
             break;
 		// button LEFT (Left arrow key)
 		case SDLK_LEFT:
@@ -870,9 +882,10 @@ Config file is updated with new values when program exit.
 			break;
 		// button L1 (Tab key)
 		case SDLK_TAB:
-            if (selectedGroupIndex > 0 && !isShowSinglePage)
+            if (!isShowSinglePage)
             { 
-                selectedGroupIndex--;
+                selectedGroupIndex = selectedGroupIndex > 0 ? 
+                    selectedGroupIndex - 1 : settingGroups.size() - 1;
                 updateGroupNameTexture();
                 updateItemIndexTexture();
                 ScrollLeft();
@@ -880,9 +893,10 @@ Config file is updated with new values when program exit.
             break;
 		// button R1 (Backspace key)
 		case SDLK_BACKSPACE:
-            if (selectedGroupIndex < settingGroups.size() - 1 && !isShowSinglePage)
+            if (!isShowSinglePage)
             {
                 selectedGroupIndex++;
+                if (selectedGroupIndex == settingGroups.size()) selectedGroupIndex = 0;
                 updateGroupNameTexture();
                 updateItemIndexTexture();
                 ScrollRight();
@@ -911,6 +925,55 @@ Config file is updated with new values when program exit.
             exit(0);
 		}
 	}
+
+    void keyRelease(const SDL_Event &event) {
+        switch (event.key.keysym.sym)
+        {
+            // button UP (Up arrow key)
+            case SDLK_UP:
+                downButton = SDLK_UNKNOWN;
+                break;
+
+            // button DOWN (Down arrow key)
+            case SDLK_DOWN:
+                downButton = SDLK_UNKNOWN;
+                break;
+        }
+    }
+
+   void checkKeyHold() {
+        if (downButton == SDLK_UNKNOWN) return;
+
+        // wait for some ticks 
+        if (keyHoldWaitingTick > 0) {
+            keyHoldWaitingTick--;
+            return;
+        }
+
+        auto group = settingGroups[selectedGroupIndex];
+        unsigned int index = group->getSelectedIndex(); 
+
+        switch (downButton) {
+            // button UP (Up arrow key)
+            case SDLK_UP:
+                if (index > 0) {
+                    group->setSelectedIndex(index - 1);
+                    updateItemIndexTexture();
+                }
+                break;
+
+            // button DOWN (Down arrow key)
+            case SDLK_DOWN:
+                if (index < group->getSize() - 1) {
+                    group->setSelectedIndex(index + 1);
+                    updateItemIndexTexture();
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -956,6 +1019,7 @@ int main(int argc, char *argv[])
     updateItemIndexTexture();
 
 	// Execute main loop of the window
+    int tick = 0;
 	while (true)
 	{
 		// handle input events
@@ -966,6 +1030,9 @@ int main(int argc, char *argv[])
 			{
 			case SDL_KEYDOWN:
 				keyPress(event);
+				break;
+			case SDL_KEYUP:
+				keyRelease(event);
 				break;
 			case SDL_QUIT:
 				return 0;
@@ -981,6 +1048,12 @@ int main(int argc, char *argv[])
 
 		// delay for around 30 fps
 		SDL_Delay(30);
+
+        tick++;
+        if (tick == 5) {
+            tick = 0;
+            checkKeyHold();
+        }
 	}
 
 	SDL_DestroyRenderer(global::renderer);
