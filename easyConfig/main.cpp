@@ -778,11 +778,21 @@ Config file is updated with new values when program exit.
         if (topItemIndex > selectedItemIndex) topItemIndex = selectedItemIndex;
 
         // adjust top item to display
-        int totalHeight = marginTop;
-        for (unsigned int i=topItemIndex; i<=selectedItemIndex; i++)
-            totalHeight += items[i]->getHeight();
+        bool checkNeeded = false;
+        do
+        {
+            int totalHeight = marginTop;
+            for (unsigned int i=topItemIndex; i<=selectedItemIndex; i++)
+                totalHeight += items[i]->getHeight();
 
-        if (totalHeight > global::SCREEN_WIDTH - instructionTexture->getHeight()) topItemIndex++;
+            checkNeeded = false;
+            if (totalHeight > global::SCREEN_WIDTH - instructionTexture->getHeight() &&
+                topItemIndex < selectedItemIndex) {
+                    topItemIndex++;
+                    checkNeeded = true;
+                }
+        } while (checkNeeded);
+        
         group->setDisplayTopIndex(topItemIndex);
 
         // iterate and render all items within the screen

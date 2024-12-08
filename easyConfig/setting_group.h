@@ -26,14 +26,14 @@ public:
     }
     bool selectPreviousItem() {
         if (visibleItems_.empty()) return false;
-        if (selectedIndex_ == 0) return false;
-        selectedIndex_--; 
+        if (selectedIndex_ == 0) selectedIndex_ = visibleItems_.size() - 1;
+        else selectedIndex_--; 
         return true;
     }
     bool selectNextItem() {
         if (visibleItems_.empty()) return false;
-        if (selectedIndex_ == visibleItems_.size() - 1) return false;
-        selectedIndex_++; 
+        if (selectedIndex_ == visibleItems_.size() - 1) selectedIndex_ = 0;
+        else selectedIndex_++; 
         return true;
     }
     unsigned int getSelectedIndex() const { 
