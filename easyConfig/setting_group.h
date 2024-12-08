@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <iostream>
 
 using std::string;
 using std::vector;
@@ -18,32 +19,49 @@ public:
     const string & getName() const { return name_; }
     const string & getOutputFilename() const { return outputFilename_; }
     vector<SettingItem*> & getItems() { return items_; }
-    unsigned int getSize() const { return items_.size(); }
+    vector<SettingItem*> & getVisibleItems() { return visibleItems_; }
     SettingItem * getSelectedItem() const { 
-        if (items_.size() == 0) throw std::logic_error("no item");
-        return items_[selectedIndex_];
+        if (visibleItems_.empty()) return nullptr;
+        return visibleItems_[selectedIndex_];
+    }
+    bool selectPreviousItem() {
+        if (visibleItems_.empty()) return false;
+        if (selectedIndex_ == 0) return false;
+        selectedIndex_--; 
+        return true;
+    }
+    bool selectNextItem() {
+        if (visibleItems_.empty()) return false;
+        if (selectedIndex_ == visibleItems_.size() - 1) return false;
+        selectedIndex_++; 
+        return true;
     }
     unsigned int getSelectedIndex() const { 
-        if (items_.size() == 0) throw std::logic_error("no item");
+        if (visibleItems_.size() == 0) throw std::logic_error("no item 2");
         return selectedIndex_; 
     }
-    void setSelectedIndex(unsigned int index) {
-        if (items_.size() == 0) throw std::logic_error("no item");
-        if (index >= items_.size()) throw std::out_of_range("invalid item index");
-        selectedIndex_ = index;
-    }
     unsigned int getDisplayTopIndex() const { 
-        if (items_.size() == 0) throw std::logic_error("no item");
+        if (visibleItems_.size() == 0) throw std::logic_error("no item 4");
         return displayTopIndex_; 
     }
     void setDisplayTopIndex(unsigned int index) {
-        if (items_.size() == 0) throw std::logic_error("no item");
-        if (index >= items_.size()) throw std::out_of_range("invalid item index");
+        if (visibleItems_.size() == 0) throw std::logic_error("no item 5");
+        if (index >= visibleItems_.size()) throw std::out_of_range("invalid item index");
         displayTopIndex_ = index;
-    }    
+    }
+    void UpdateVisibleItems(const vector<string> & mode) {
+        visibleItems_.clear();
+        for (auto & item : items_) {
+            item->UpdateVisible(mode);
+            if (item->isVisible()) {
+                visibleItems_.push_back(item);
+            }
+        }
+    }
 private:
     const string name_, outputFilename_;
     vector<SettingItem*> items_;
+    vector<SettingItem*> visibleItems_;
     unsigned int selectedIndex_ = 0;
     unsigned int displayTopIndex_ = 0;
 };

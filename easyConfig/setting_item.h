@@ -12,7 +12,7 @@ using std::vector;
 class SettingItem
 {
 public:
-    explicit SettingItem(const string & infoCommand);
+    explicit SettingItem(const string & infoCommand, const vector<string> & modeTags);
 
     explicit SettingItem(
         const string & id, 
@@ -21,9 +21,11 @@ public:
         const string & displayValuesString,
         const string & selectedValue,
         const string & commandsString,
-        const string & infoCommandString
+        const string & infoCommandString,
+        const vector<string> & modeTags
         );
 
+    void UpdateVisible(const vector<string> & modes);
     void renderDescription(int offsetX, int offsetY) const;
     void renderValue(int offsetX, int offsetY) const;
     void selectPreviousValue();
@@ -40,6 +42,7 @@ public:
     const vector<string> & getOptions() const { return options_; }
     const vector<string> & getDisplayValues() const { return displayValues_; }
     const vector<string> & getCommands() const { return commands_; }
+    const vector<string> & getModeTags() const { return modeTags_; }
     const string & getSourceCommandString() const { return sourceCommandString_; }
     const string & getInfoCommandString() const { return infoCommandString_; }
     const string & getMinorText() const { return minorText_; }
@@ -48,6 +51,7 @@ public:
     unsigned int getOldSelectedIndex() const { return oldSelectedIndex_; }
     bool IsInitOK() const { return isInitOK_; }
     bool isInfoText() const { return isInfoText_; }
+    bool isVisible() const { return isVisible_; }
     const string & getErrorMessage() const { return errorMessage_; }
     TextTexture* getDescriptionTexture() const { return descriptionTexture_; }
     TextTexture* getValueTexture() const { return valueTexture_; }
@@ -66,6 +70,7 @@ public:
             return 10;
         }        
     }
+
 private:
     const string id_;
     const string description_;
@@ -73,14 +78,16 @@ private:
     const string displayValuesString_;
     string selectedValue_;
     const string commandsString_;
+    string infoCommandString_;
+    vector<string> modeTags_;
     vector<string> options_;
     vector<string> displayValues_;
     vector<string> commands_;
     unsigned int selectedIndex_, oldSelectedIndex_;
     bool isInitOK_ = false;
     bool isInfoText_ = false;
+    bool isVisible_ = true;
     string sourceCommandString_;
-    string infoCommandString_;
     string minorText_;
     string errorMessage_;
     TextTexture* descriptionTexture_ = nullptr;

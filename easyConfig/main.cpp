@@ -29,7 +29,9 @@ using std::vector;
 string programName;
 string configFileName;
 int fontSize = 28;
+vector <string> modes;
 vector<SettingGroup*> settingGroups = { new SettingGroup("Default") };
+vector<SettingGroup*> nonEmptyGroups;
 unsigned int selectedGroupIndex = 0;
 SDL_Texture *messageBGTexture = nullptr;
 SDL_Rect overlay_bg_render_rect;
@@ -57,8 +59,10 @@ int keyHoldWaitingTick = 0;
 namespace {
     class BracketedString {
     public:
-        BracketedString(string &s) : str(s), const_str(s) {};
-        BracketedString(const string &s) : const_str(s) {};
+        BracketedString(string &s, char open='[', char close=']') 
+            : str(s), const_str(s), open_bracket(open), close_bracket(close) {};
+        BracketedString(const string &s, char open='[', char close=']') 
+            : const_str(s), open_bracket(open), close_bracket(close) {};
 
         friend istream & operator>>(istream &is, BracketedString bs) {
             if (&bs.str == &BracketedString::dummy) 
@@ -67,7 +71,7 @@ namespace {
             // if not start with open bracket, treat as usual input case
             char ch;
             is >> ch;
-            if (ch != '[') { is.putback(ch); return is >> bs.str; }
+            if (ch != bs.open_bracket) { is.putback(ch); return is >> bs.str; }
 
             is >> std::noskipws; // disable skipping white space
             bs.str.clear(); // clear output string first
@@ -78,7 +82,7 @@ namespace {
             while (is >> ch) {
                 if (isEscaped) { isEscaped = false; oss << ch; continue; }
                 if (ch == '\\') { isEscaped = true; continue; }
-                if (ch == ']') break;
+                if (ch == bs.close_bracket) break;
                 oss << ch;
             }
             bs.str = oss.str();
@@ -87,12 +91,12 @@ namespace {
         }
 
         friend ostream & operator<<(ostream &os, BracketedString bs) {
-            os << '[';
+            os << bs.open_bracket;
             for(const char& ch : bs.const_str) { 
-                if (ch == ']') os << '\\'; 
+                if (ch == bs.close_bracket) os << '\\'; 
                 os << ch; 
             } 
-            os << ']';
+            os << bs.close_bracket;
             return os;
         }
 
@@ -100,17 +104,16 @@ namespace {
         static string dummy;
         string &str = dummy;
         const string &const_str;
+        char open_bracket = '[';
+        char close_bracket = ']';
     };
 
     string BracketedString::dummy;
 
-    BracketedString bracketed(string & s) {
-        return BracketedString(s);
-    }
-
-    BracketedString bracketed(const string & s) {
-        return BracketedString(s);
-    }
+    BracketedString squareBracketed(string & s) { return BracketedString(s); }
+    BracketedString squareBracketed(const string & s) { return BracketedString(s); }
+    BracketedString angleBracketed(string & s) { return BracketedString(s, '<', '>'); }
+    BracketedString angleBracketed(const string & s) { return BracketedString(s, '<', '>'); }
 
 	// trim from start (in place)
 	inline void ltrim(string &s) {
@@ -126,8 +129,6 @@ namespace {
 		}).base(), s.end());
 	}
 
-    // istream & operator>>(istream &is, string& s)
-
 	double easeInOutQuart(double x)
 	{
 		return x < 0.5 ? 8 * x * x * x * x : 1 - pow(-2 * x + 2, 4) / 2;
@@ -136,12 +137,13 @@ namespace {
     void printUsage()
     {
         cout << R"_(
-Usage: easyConfig config_file [-t title] [-p index] [-o]
+Usage: easyConfig config_file [-o] [-m MODE] [-p index] [-t title]
 
--t:     title of the config window.
--p:     show i-th group only (first group index = 1).
--o:     generate options only
 -h,--help       show this help message.
+-m:     filter setting items with specified MODE, multiple modes can be specified.
+-o:     generate options only.
+-p:     show i-th group only (first group index = 1).
+-t:     title of the config window.
 
 UI control: L1/R1: Select group, Up/Down: Select item, Left/Right/A: Change value, B: Save and exit, Select: Cancel and exit
 
@@ -178,6 +180,10 @@ And to use the alias in a command replace the string to be replaced with the syn
 Dynamic information text can be added as single item, which should be a command to be executed on start. The command should print output to stdout to set the information text. To define an information text add a line with the following format
 
 %"the_commond_to_run_on_start.sh"
+
+Setting items can be tagged by mode names and filtered with the -m option. A setting item is always shown if no tag is assigned. To tag a setting item, insert the mode names before the setting item with the following format:
+
+<MODE_NAME_1> <MODE_NAME_2> ...
 
 Setting items can be organized into groups, which displayed as multiple tags in config window. To define a group insert line with the following format:
 
@@ -226,6 +232,7 @@ Config file is updated with new values when program exit.
         // iterate all input line
         string line;
         SettingItem * lastItem = nullptr;
+        vector<string> modeTags;
         while (getline(file, line))
         {
             // trim input line
@@ -252,7 +259,6 @@ Config file is updated with new values when program exit.
                 string name = '$' + pair.substr(0, pos) + '$';
                 string value = pair.substr(pos + 1);
                 global::aliases[name] = value;
-                cout << name << ' ' << value << endl;
                 continue;
             }
 
@@ -262,14 +268,25 @@ Config file is updated with new values when program exit.
                 string groupName, outputFilename;
 
                 // read group name
-                if (! (iss >> bracketed(groupName))) 
+                if (! (iss >> squareBracketed(groupName))) 
                     printErrorAndExit("cannot process line: ", line);
 
                 // try read output filename
-                iss >> bracketed(outputFilename);
+                iss >> squareBracketed(outputFilename);
 
                 // create group item
                 settingGroups.push_back(new SettingGroup(groupName, outputFilename));
+
+                continue;
+            }
+
+            if (line.front() == '<') {
+                istringstream iss(line);
+                string mode;
+                while ((iss >> angleBracketed(mode))) {
+                    bool found = std::find(modeTags.begin(), modeTags.end(), mode) != modeTags.end();
+                    if (!found) modeTags.push_back(mode); 
+                }
 
                 continue;
             }
@@ -306,20 +323,23 @@ Config file is updated with new values when program exit.
                     printErrorAndExit("cannot process line: ", line);
 
                 // create setting item
-                auto item = new SettingItem(infoCommand);
-
-                if (item->IsInitOK() == false) {
+                auto item = new SettingItem(infoCommand, modeTags);
+                if (item->IsInitOK() == false)
                     printErrorAndExit(item->getErrorMessage() + ": ", line);
-                }
-
+    
                 // add item to recent created group
                 settingGroups.back()->getItems().push_back(item);
 
                 // store last item
                 lastItem = item;
 
+                // clear mode tags
+                modeTags.clear();
+
                 continue;
             }
+
+            // if we reach here the current line should be setting item
 
             // process line with string stream
             // try read line as setting item
@@ -346,9 +366,9 @@ Config file is updated with new values when program exit.
                 displayValues, 
                 selectedValue,
                 commands,
-                infoCommand
+                infoCommand,
+                modeTags
             );
-
             if (item->IsInitOK() == false) {
                 printErrorAndExit(item->getErrorMessage() + ": ", line);
             }
@@ -358,21 +378,31 @@ Config file is updated with new values when program exit.
 
             // store last item
             lastItem = item;
+
+            // clear mode tags
+            modeTags.clear();
         }
 
 		// close file
 		file.close();
 
         // remove default empty group
-        if (settingGroups.front()->getSize() == 0)
+        if (settingGroups.front()->getItems().empty())
         {
             settingGroups.erase(settingGroups.begin());
         }
 
+        // update setting item visibility according to specified modes
+        for (auto &group : settingGroups) {
+            group->UpdateVisibleItems(modes);
+            if (group->getVisibleItems().empty() == false)
+                nonEmptyGroups.push_back(group);
+        }
+
         // adjust selectedGroupIndex
-        if (selectedGroupIndex >= settingGroups.size()) 
+        if (selectedGroupIndex >= nonEmptyGroups.size()) 
         { 
-            selectedGroupIndex = settingGroups.size() - 1;
+            selectedGroupIndex = nonEmptyGroups.size() - 1;
         }
 
         // set enivornment variable
@@ -399,12 +429,22 @@ Config file is updated with new values when program exit.
         // write all settings to file
         for (auto &group : settingGroups)
         {
-            file << bracketed(group->getName());
+            file << squareBracketed(group->getName());
             if (!group->getOutputFilename().empty())
-               file << ' ' << bracketed(group->getOutputFilename());
+               file << ' ' << squareBracketed(group->getOutputFilename());
             file << endl;
             for (auto &item : group->getItems())
             {
+                // handle mode tags
+                auto & tags = item->getModeTags();
+                if (tags.empty() == false) {
+                    for (auto & tag : tags) {
+                        file << angleBracketed(tag);
+                        if (tag != tags.back()) file << ' ';
+                    }
+                    file << endl;
+                }
+
                 // handle info text
                 if (item->isInfoText()) {
                     file << '%' << quoted(item->getCommandsString()) << endl;
@@ -528,19 +568,27 @@ Config file is updated with new values when program exit.
 		while (i < argc)
         {
 			auto option = argv[i];
-            if (strcmp(option, "-t") == 0)
-            {
-				if (i == argc - 1) printErrorUsageAndExit("-t: Missing option value");
-                titleText = argv[i+1];
-                if (titleText.empty()) printErrorUsageAndExit("-t: Title can't ne empty");
-                isShowTitle = true;
-                i += 2;
-            }
-			else if (strcmp(option, "-h") == 0 || strcmp(option, "--help") == 0)
+			if (strcmp(option, "-h") == 0 || strcmp(option, "--help") == 0)
 			{
 				printUsage();
 				exit(0);
 			}
+            else if (strcmp(option, "-m") == 0)
+            {
+				if (i == argc - 1) printErrorUsageAndExit("-m: Missing option value");
+                string mode = argv[i+1];
+                if (mode.empty()) printErrorUsageAndExit("-m: Invalid mode");
+                bool found = std::find(modes.begin(), modes.end(), mode) != modes.end();
+                if (found) printErrorUsageAndExit("-m: Mode alread added");
+                modes.push_back(mode);
+                i += 2;
+            }
+            else if (strcmp(option, "-o") == 0)
+            {
+                loadConfigFile(argv[1]);
+                saveOptionsFile();
+                exit(0);
+            }
             else if (strcmp(option, "-p") == 0)
             {
 				if (i == argc - 1) printErrorUsageAndExit("-p: Missing option value");
@@ -550,11 +598,13 @@ Config file is updated with new values when program exit.
                 selectedGroupIndex = static_cast<unsigned int>(page - 1);
                 i += 2;
             }
-            else if (strcmp(option, "-o") == 0)
+            else if (strcmp(option, "-t") == 0)
             {
-                loadConfigFile(argv[1]);
-                saveOptionsFile();
-                exit(0);
+				if (i == argc - 1) printErrorUsageAndExit("-t: Missing option value");
+                titleText = argv[i+1];
+                if (titleText.empty()) printErrorUsageAndExit("-t: Title can't ne empty");
+                isShowTitle = true;
+                i += 2;
             }
 			else
 				printErrorUsageAndExit("Invalue option: ", option);
@@ -563,10 +613,15 @@ Config file is updated with new values when program exit.
 
     void updateGroupNameTexture()
     {
+        if (groupNameTexture != nullptr) {
+            delete groupNameTexture;
+            groupNameTexture = nullptr;
+        }
+
         ostringstream oss;
-        for (auto &group : settingGroups)
+        for (auto &group : nonEmptyGroups)
         {
-            if (group == settingGroups[selectedGroupIndex]) {
+            if (group == nonEmptyGroups[selectedGroupIndex]) {
                 oss << group->getName();
             }
             else if (!isShowSinglePage) {
@@ -583,9 +638,17 @@ Config file is updated with new values when program exit.
     }
 
     void updateItemIndexTexture() {
+        if (itemIndexTexture != nullptr) {
+            delete itemIndexTexture;
+            itemIndexTexture = nullptr;
+        }
+        
+        auto group = nonEmptyGroups[selectedGroupIndex];
+        auto size = group->getVisibleItems().size();
+        if (size == 0) return;
+
         ostringstream oss;
-        auto group = settingGroups[selectedGroupIndex];
-        oss << group->getSelectedIndex() + 1 << '/' << group->getSize();
+        oss << group->getSelectedIndex() + 1 << '/' << group->getVisibleItems().size();
         itemIndexTexture = new TextTexture(
             oss.str(),
             global::font,
@@ -688,11 +751,11 @@ Config file is updated with new values when program exit.
         if (isShowTitle) titleTexture->render(0, 10);
         if (isShowInstruction) {
              instructionTexture->render(5, 0);
-             itemIndexTexture->render(-5, 0);
+             if (itemIndexTexture != nullptr) itemIndexTexture->render(-5, 0);
         }
 
         // render current group name
-        if (settingGroups.size() > 1) {
+        if (nonEmptyGroups.size() > 1) {
             if (!isShowTitle) {
                 marginTop += 10;
                 groupNameTexture->render(0, 10);
@@ -707,7 +770,9 @@ Config file is updated with new values when program exit.
         }
 
         // get some display parameters
-        auto group = settingGroups[selectedGroupIndex];
+        auto group = nonEmptyGroups[selectedGroupIndex];
+        auto items = group->getVisibleItems();
+        if (items.empty()) return;
         unsigned int selectedItemIndex = group->getSelectedIndex();
         unsigned int topItemIndex = group->getDisplayTopIndex();
         if (topItemIndex > selectedItemIndex) topItemIndex = selectedItemIndex;
@@ -715,7 +780,7 @@ Config file is updated with new values when program exit.
         // adjust top item to display
         int totalHeight = marginTop;
         for (unsigned int i=topItemIndex; i<=selectedItemIndex; i++)
-            totalHeight += group->getItems()[i]->getHeight();
+            totalHeight += items[i]->getHeight();
 
         if (totalHeight > global::SCREEN_WIDTH - instructionTexture->getHeight()) topItemIndex++;
         group->setDisplayTopIndex(topItemIndex);
@@ -723,7 +788,6 @@ Config file is updated with new values when program exit.
         // iterate and render all items within the screen
         unsigned int index = 0;
         int offsetY = marginTop;
-        auto items = group->getItems();
         for (auto &item : items)
         {
             // skip items that are outside screen
@@ -790,7 +854,7 @@ Config file is updated with new values when program exit.
 
     void ScrollLeft() {
         auto curr = selectedGroupIndex;
-        auto next = selectedGroupIndex < settingGroups.size() - 1 ? 
+        auto next = selectedGroupIndex < nonEmptyGroups.size() - 1 ? 
             selectedGroupIndex + 1 : 0;
         double step = 1;
         while (step > 0) {
@@ -815,7 +879,7 @@ Config file is updated with new values when program exit.
     void ScrollRight() {
         auto curr = selectedGroupIndex;
         auto prev = selectedGroupIndex > 0 ? 
-            selectedGroupIndex - 1 : settingGroups.size() -1;
+            selectedGroupIndex - 1 : nonEmptyGroups.size() -1;
         double step = 1;
         while (step > 0) {
             SDL_RenderClear(global::renderer);
@@ -841,8 +905,7 @@ Config file is updated with new values when program exit.
 		if (event.type != SDL_KEYDOWN)
 			return;
 
-        auto group = settingGroups[selectedGroupIndex];
-        unsigned int index = group->getSelectedIndex(); 
+        auto group = nonEmptyGroups[selectedGroupIndex];
 
 		const auto sym = event.key.keysym.sym;
 		switch (sym)
@@ -853,19 +916,15 @@ Config file is updated with new values when program exit.
         	break;
 		// button UP (Up arrow key)
 		case SDLK_UP:
-            if (index > 0) {
-                group->setSelectedIndex(index - 1);
-                updateItemIndexTexture();
-            }
+            group->selectPreviousItem();
+            updateItemIndexTexture();
             downButton = SDLK_UP;
             keyHoldWaitingTick = 3;
             break;
 		// button DOWN (Down arrow key)
 		case SDLK_DOWN:
-            if (index < group->getSize() - 1) {
-                group->setSelectedIndex(index + 1);
-                updateItemIndexTexture();
-            }
+            group->selectNextItem();
+            updateItemIndexTexture();
             downButton = SDLK_DOWN;
             keyHoldWaitingTick = 3;
             break;
@@ -885,7 +944,7 @@ Config file is updated with new values when program exit.
             if (!isShowSinglePage)
             { 
                 selectedGroupIndex = selectedGroupIndex > 0 ? 
-                    selectedGroupIndex - 1 : settingGroups.size() - 1;
+                    selectedGroupIndex - 1 : nonEmptyGroups.size() - 1;
                 updateGroupNameTexture();
                 updateItemIndexTexture();
                 ScrollLeft();
@@ -896,7 +955,7 @@ Config file is updated with new values when program exit.
             if (!isShowSinglePage)
             {
                 selectedGroupIndex++;
-                if (selectedGroupIndex == settingGroups.size()) selectedGroupIndex = 0;
+                if (selectedGroupIndex == nonEmptyGroups.size()) selectedGroupIndex = 0;
                 updateGroupNameTexture();
                 updateItemIndexTexture();
                 ScrollRight();
@@ -950,24 +1009,19 @@ Config file is updated with new values when program exit.
             return;
         }
 
-        auto group = settingGroups[selectedGroupIndex];
-        unsigned int index = group->getSelectedIndex(); 
+        auto group = nonEmptyGroups[selectedGroupIndex];
 
         switch (downButton) {
             // button UP (Up arrow key)
             case SDLK_UP:
-                if (index > 0) {
-                    group->setSelectedIndex(index - 1);
-                    updateItemIndexTexture();
-                }
+                group->selectPreviousItem();
+                updateItemIndexTexture();
                 break;
 
             // button DOWN (Down arrow key)
             case SDLK_DOWN:
-                if (index < group->getSize() - 1) {
-                    group->setSelectedIndex(index + 1);
-                    updateItemIndexTexture();
-                }
+                group->selectNextItem();
+                updateItemIndexTexture();
                 break;
 
             default:

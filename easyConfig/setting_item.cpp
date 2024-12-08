@@ -23,9 +23,10 @@ namespace {
         return tokens;
     }
 
-    // search string in string vector and return zero-based index if found
+    // search element in vector and return zero-based index if found
     // return -1 if no element is find
-    int find(vector<string> v, string s)
+    template<typename T>
+    int find(vector<T> v, T s)
     {
         auto it = find(v.begin(), v.end(), s); 
 
@@ -54,9 +55,9 @@ namespace {
     }
 }
 
-SettingItem::SettingItem(const string & infoCommand)
+SettingItem::SettingItem(const string & infoCommand, const vector<string> & modeTags)
     : description_(exec(global::replaceAliases(infoCommand))),
-    commandsString_(infoCommand),
+    commandsString_(infoCommand), modeTags_(modeTags),
     isInfoText_(true)
 {
     if (description_.empty()) {
@@ -81,11 +82,12 @@ SettingItem::SettingItem(
         const string & displayValuesString,
         const string & selectedValue,
         const string & commandsString,
-        const string & infoCommandString
+        const string & infoCommandString,
+        const vector<string> & modeTags
         )
     :id_(id), description_(description), optionsString_(optionsString),
      displayValuesString_(displayValuesString), selectedValue_(selectedValue),
-     commandsString_(commandsString), infoCommandString_(infoCommandString)
+     commandsString_(commandsString), infoCommandString_(infoCommandString), modeTags_(modeTags)
 {
     options_ = split(optionsString_, "|");
     displayValues_ = split(displayValuesString_, "|");
@@ -128,6 +130,23 @@ SettingItem::SettingItem(
     updateTextures();
 
     isInitOK_ = true;
+}
+
+void SettingItem::UpdateVisible(const vector<string> & modes) {
+    // set to visible if there is no mode tag 
+    if (modeTags_.empty()) {
+        isVisible_ = true; 
+        return; 
+    }
+
+    //otherwise match tag to given modes
+    isVisible_ = false; 
+    for (string & tag : modeTags_) {
+        if (find(modes, tag) != -1) { 
+            isVisible_ = true; 
+            return; 
+        }
+    }
 }
 
 void SettingItem::setMinorText(const string & text) {
