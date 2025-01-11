@@ -1,10 +1,10 @@
-RELEASE_VERSION=3.2.0
-RELEASE_CHECKSUM=f858d844f931f14e7f48f1f1b64c0465
-RELEASE_SIZE_IN_MB=309
-RELEASE_LINK=https://github.com/spruceUI/spruceOS/releases/download/v3.2.0/spruceV3.2.0.7z
-RELEASE_INFO=https://github.com/spruceUI/spruceOS/releases/tag/v3.2.0
 NIGHTLY_VERSION=3.3.0-20250110
 NIGHTLY_CHECKSUM=63add3e8ed96ff192fb1fec084d352b3
 NIGHTLY_SIZE_IN_MB=300
 NIGHTLY_LINK=https://github.com/spruceUI/spruceOSNightlies/releases/download/v3.3.0-20250110/spruceV3.3.0-20250110.7z
 NIGHTLY_INFO=https://github.com/spruceUI/spruceOSNightlies/releases/tag/v3.3.0-20250110
+RELEASE_VERSION=3.3.0
+RELEASE_CHECKSUM=6ce5f8630c9a9fd3f21b77a5a224a5a0
+RELEASE_SIZE_IN_MB=300
+RELEASE_LINK=https://github.com/spruceUI/spruceOS/releases/download/v3.3.0/spruceV3.3.0.7z
+RELEASE_INFO=https://github.com/spruceUI/spruceOS/releases/tag/v3.3.0
