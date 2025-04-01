@@ -58,8 +58,18 @@ int main(int argc, char *argv[]) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_ShowCursor(0);
 
-  SDL_Window *window = SDL_CreateWindow("Main", 0, 0, screenWidth, screenHeight,
+  int windowWidth, windowHeight;
+  if (rotation == 0 || rotation == 180) {
+    windowWidth = screenWidth;
+    windowHeight = screenHeight;
+  } else {
+    windowWidth = screenHeight;
+    windowHeight = screenWidth;
+  }
+
+  SDL_Window *window = SDL_CreateWindow("Main", 0, 0, windowWidth, windowHeight,
                                         SDL_WINDOW_SHOWN);
+
   SDL_Renderer *renderer = SDL_CreateRenderer(
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
@@ -80,8 +90,14 @@ int main(int argc, char *argv[]) {
   new_w = new_w * relative_scaling;
 
   SDL_Rect rtimg = {0};
-  rtimg.x = (screenWidth - new_w) / 2;
-  rtimg.y = (screenHeight - new_h) / 2;
+  if (rotation == 0 || rotation == 90) {
+    rtimg.x = (screenWidth - new_w) / 2;
+    rtimg.y = (screenHeight - new_h) / 2;
+  } else {
+    rtimg.x = (screenHeight - new_w) / 2;
+    rtimg.y = (screenWidth - new_h) / 2;
+  }
+
   rtimg.w = new_w;
   rtimg.h = new_h;
 
@@ -143,9 +159,9 @@ int main(int argc, char *argv[]) {
         if (strcmp(argv[max_arg], "top") == 0) {
           rtimg.x = (new_h - new_w) / 2;
         } else if (strcmp(argv[max_arg], "bottom") == 0) {
-          rtimg.x = (screenWidth - new_w) + ((new_w - new_h) / 2);
+          rtimg.x = (screenHeight - new_w) + ((new_w - new_h) / 2);
         } else {
-          rtimg.x = (screenWidth - new_w) / 2;
+          rtimg.x = (screenHeight - new_w) / 2;
         }
       }
     }
@@ -178,11 +194,11 @@ int main(int argc, char *argv[]) {
         }
       } else if (rotation == 270) { // Rotated 270 degrees (original behavior)
         if (strcmp(argv[max_arg], "left") == 0) {
-          rtimg.y = (screenHeight - new_h) - ((new_w - new_h) / 2);
+          rtimg.y = (screenWidth - new_h) - ((new_w - new_h) / 2);
         } else if (strcmp(argv[max_arg], "right") == 0) {
           rtimg.y = ((new_w - new_h) / 2);
         } else {
-          rtimg.y = (screenHeight - new_h) / 2;
+          rtimg.y = (screenWidth - new_h) / 2;
         }
       }
     }
@@ -356,19 +372,19 @@ int main(int argc, char *argv[]) {
       textside = (screenWidth - surfaceMessage->w) / 2;
     }
   } else if (rotation == 270) { // Rotated 270 degrees
-    textheight = (screenHeight - surfaceMessage->w) * percentY / 100;
+    textside = (screenWidth - surfaceMessage->w) * percentY / 100;
 
     if (argc > 9) {
       if (strcmp(argv[9], "left") == 0) {
-        textside = (screenWidth - surfaceMessage->h) -
-                   ((surfaceMessage->w - surfaceMessage->h) / 2);
+        textheight = (screenWidth - surfaceMessage->h) -
+                     ((surfaceMessage->w - surfaceMessage->h) / 2);
       } else if (strcmp(argv[9], "right") == 0) {
-        textside = ((surfaceMessage->w - surfaceMessage->h) / 2);
+        textheight = ((surfaceMessage->w - surfaceMessage->h) / 2);
       } else {
-        textside = (screenWidth - surfaceMessage->h) / 2;
+        textheight = (screenWidth - surfaceMessage->h) / 2;
       }
     } else {
-      textside = (screenWidth - surfaceMessage->h) / 2;
+      textheight = (screenWidth - surfaceMessage->h) / 2;
     }
   }
 
