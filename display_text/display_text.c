@@ -113,25 +113,80 @@ int main(int argc, char *argv[]) {
     new_w = new_w * relative_scaling;
     rtimg.w = new_w;
     rtimg.h = new_h;
+
     if (argc > max_arg) {
-      if (strcmp(argv[max_arg], "top") == 0) {
-        rtimg.x = (new_h - new_w) / 2;
-      } else if (strcmp(argv[max_arg], "bottom") == 0) {
-        rtimg.x = (screenWidth - new_w) + ((new_w - new_h) / 2);
-      } else {
-        rtimg.x = (screenWidth - new_w) / 2;
+      if (rotation == 0) { // Normal orientation
+        if (strcmp(argv[max_arg], "top") == 0) {
+          rtimg.y = 0;
+        } else if (strcmp(argv[max_arg], "bottom") == 0) {
+          rtimg.y = screenHeight - new_h;
+        } else {
+          rtimg.y = (screenHeight - new_h) / 2;
+        }
+      } else if (rotation == 90) { // Rotated 90 degrees
+        if (strcmp(argv[max_arg], "top") == 0) {
+          rtimg.x = screenWidth - new_w;
+        } else if (strcmp(argv[max_arg], "bottom") == 0) {
+          rtimg.x = 0;
+        } else {
+          rtimg.x = (screenWidth - new_w) / 2;
+        }
+      } else if (rotation == 180) { // Rotated 180 degrees
+        if (strcmp(argv[max_arg], "top") == 0) {
+          rtimg.y = screenHeight - new_h;
+        } else if (strcmp(argv[max_arg], "bottom") == 0) {
+          rtimg.y = 0;
+        } else {
+          rtimg.y = (screenHeight - new_h) / 2;
+        }
+      } else if (rotation == 270) { // Rotated 270 degrees (original behavior)
+        if (strcmp(argv[max_arg], "top") == 0) {
+          rtimg.x = (new_h - new_w) / 2;
+        } else if (strcmp(argv[max_arg], "bottom") == 0) {
+          rtimg.x = (screenWidth - new_w) + ((new_w - new_h) / 2);
+        } else {
+          rtimg.x = (screenWidth - new_w) / 2;
+        }
       }
     }
     max_arg++;
+
     if (argc > max_arg) {
-      if (strcmp(argv[max_arg], "left") == 0) {
-        rtimg.y = (screenHeight - new_h) - ((new_w - new_h) / 2);
-      } else if (strcmp(argv[max_arg], "right") == 0) {
-        rtimg.y = ((new_w - new_h) / 2);
-      } else {
-        rtimg.y = (screenHeight - new_h) / 2;
+      if (rotation == 0) { // Normal orientation
+        if (strcmp(argv[max_arg], "left") == 0) {
+          rtimg.x = 0;
+        } else if (strcmp(argv[max_arg], "right") == 0) {
+          rtimg.x = screenWidth - new_w;
+        } else {
+          rtimg.x = (screenWidth - new_w) / 2;
+        }
+      } else if (rotation == 90) { // Rotated 90 degrees
+        if (strcmp(argv[max_arg], "left") == 0) {
+          rtimg.y = screenHeight - new_h;
+        } else if (strcmp(argv[max_arg], "right") == 0) {
+          rtimg.y = 0;
+        } else {
+          rtimg.y = (screenHeight - new_h) / 2;
+        }
+      } else if (rotation == 180) { // Rotated 180 degrees
+        if (strcmp(argv[max_arg], "left") == 0) {
+          rtimg.x = screenWidth - new_w;
+        } else if (strcmp(argv[max_arg], "right") == 0) {
+          rtimg.x = 0;
+        } else {
+          rtimg.x = (screenWidth - new_w) / 2;
+        }
+      } else if (rotation == 270) { // Rotated 270 degrees (original behavior)
+        if (strcmp(argv[max_arg], "left") == 0) {
+          rtimg.y = (screenHeight - new_h) - ((new_w - new_h) / 2);
+        } else if (strcmp(argv[max_arg], "right") == 0) {
+          rtimg.y = ((new_w - new_h) / 2);
+        } else {
+          rtimg.y = (screenHeight - new_h) / 2;
+        }
       }
     }
+
     max_arg++;
     SDL_RenderCopyEx(renderer, texture, NULL, &rtimg, rotation, NULL,
                      SDL_FLIP_NONE);
@@ -241,79 +296,86 @@ int main(int argc, char *argv[]) {
   // SDL_Surface* surfaceMessage = TTF_RenderText_Blended_Wrapped(Font, message,
   // color, width);
 
-  int textYStart, textXStart = 0;
-  switch (rotation) {
-  case 0:
-    if (argc > 8) {
-      textYStart = atoi(argv[8]);
-    }
-    if (argc > 9) {
-      textXStart = atoi(argv[9]);
-    }
-    break;
-  case 90:
-    // TODO: fix this later
-    if (argc > 8) {
-      textYStart = atoi(argv[8]);
-    }
-    if (argc > 9) {
-      textXStart = atoi(argv[9]);
-    }
-    break;
-  case 180:
-    // TODO: fix this later
-    if (argc > 8) {
-      textYStart = atoi(argv[8]);
-    }
-    if (argc > 9) {
-      textXStart = atoi(argv[9]);
-    }
-    break;
-  case 270:
-    // TODO: fix this later
-    if (argc > 8) {
-      textYStart = atoi(argv[8]);
-    }
-    if (argc > 9) {
-      textXStart = atoi(argv[9]);
-    }
-    break;
-  }
+  // begin chad
 
-  // TODO: this assumes rotation which can make it a bit hard to follow,
-  // e.g. textside is actually the Y axis for an unrotated device. we might
-  // want to rewrite this from the perspective of an unrotated device.
-  int textheight;
+  int textheight, textside;
+  int percentY = 50; // Default to center if no argument is provided
+
   if (argc > 8) {
-    if (strcmp(argv[8], "top") == 0) {
-      textheight = 0 - ((surfaceMessage->w - surfaceMessage->h) / 2);
-    } else if (strcmp(argv[8], "bottom") == 0) {
-      textheight = (screenWidth - surfaceMessage->w) +
+    percentY = atoi(argv[8]); // Convert argument to integer percentage
+    if (percentY < 0)
+      percentY = 0;
+    if (percentY > 100)
+      percentY = 100;
+  }
+
+  if (rotation == 0) { // Normal orientation
+    textheight = (screenHeight - surfaceMessage->h) * percentY / 100;
+
+    printf("rotation: 0, percentY: %d, screenHeight: %d, surfaceMessage->h: "
+           "%d, textheight: %d\n",
+           percentY, screenHeight, surfaceMessage->h, textheight);
+
+    if (argc > 9) {
+      if (strcmp(argv[9], "left") == 0) {
+        textside = 0;
+      } else if (strcmp(argv[9], "right") == 0) {
+        textside = screenWidth - surfaceMessage->w;
+      } else {
+        textside = (screenWidth - surfaceMessage->w) / 2;
+      }
+    } else {
+      textside = (screenWidth - surfaceMessage->w) / 2;
+    }
+  } else if (rotation == 90) { // Rotated 90 degrees
+    textheight = (screenWidth - surfaceMessage->w) * percentY / 100;
+
+    if (argc > 9) {
+      if (strcmp(argv[9], "left") == 0) {
+        textside = 0;
+      } else if (strcmp(argv[9], "right") == 0) {
+        textside = screenHeight - surfaceMessage->h;
+      } else {
+        textside = (screenHeight - surfaceMessage->h) / 2;
+      }
+    } else {
+      textside = (screenHeight - surfaceMessage->h) / 2;
+    }
+  } else if (rotation == 180) { // Rotated 180 degrees
+    textheight = (screenHeight - surfaceMessage->h) * percentY / 100;
+
+    if (argc > 9) {
+      if (strcmp(argv[9], "left") == 0) {
+        textside = screenWidth - surfaceMessage->w;
+      } else if (strcmp(argv[9], "right") == 0) {
+        textside = 0;
+      } else {
+        textside = (screenWidth - surfaceMessage->w) / 2;
+      }
+    } else {
+      textside = (screenWidth - surfaceMessage->w) / 2;
+    }
+  } else if (rotation == 270) { // Rotated 270 degrees
+    textheight = (screenHeight - surfaceMessage->w) * percentY / 100;
+
+    if (argc > 9) {
+      if (strcmp(argv[9], "left") == 0) {
+        textside = (screenWidth - surfaceMessage->h) -
                    ((surfaceMessage->w - surfaceMessage->h) / 2);
+      } else if (strcmp(argv[9], "right") == 0) {
+        textside = ((surfaceMessage->w - surfaceMessage->h) / 2);
+      } else {
+        textside = (screenWidth - surfaceMessage->h) / 2;
+      }
     } else {
-      textheight = (screenWidth - surfaceMessage->w) / 2 + textXStart;
+      textside = (screenWidth - surfaceMessage->h) / 2;
     }
-  } else {
-    textheight = (screenWidth - surfaceMessage->w) / 2;
   }
 
-  int textside;
-  if (argc > 9) {
-    if (strcmp(argv[9], "left") == 0) {
-      textside = (screenHeight - surfaceMessage->h) -
-                 ((surfaceMessage->w - surfaceMessage->h) / 2);
-    } else if (strcmp(argv[9], "right") == 0) {
-      textside = ((surfaceMessage->w - surfaceMessage->h) / 2);
-    } else {
-      textside = (screenHeight - surfaceMessage->h) / 2 + textYStart;
-    }
-  } else {
-    textside = (screenHeight - surfaceMessage->h) / 2;
-  }
-
+  // Update SDL_Rect positioning
   SDL_Rect rt = {0};
-  rt.x = textheight;
-  rt.y = textside;
+  rt.x = textside;
+  rt.y = textheight;
   rt.w = surfaceMessage->w;
   rt.h = surfaceMessage->h;
 
@@ -322,6 +384,8 @@ int main(int argc, char *argv[]) {
   rtorigin.y = 0;
   rtorigin.w = surfaceMessage->w;
   rtorigin.h = surfaceMessage->h;
+
+  // end chad
 
   SDL_Surface *surfacebg = SDL_CreateRGBSurface(
       0, surfaceMessage->w, surfaceMessage->h, 32, 0, 0, 0, 0);
