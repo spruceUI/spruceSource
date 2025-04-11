@@ -1,7 +1,7 @@
 #include "text_texture.h"
 
-#include <SDL.h>
-#include <SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 TextTexture::TextTexture(const string & text, TTF_Font *font, SDL_Color color, 
     TextureAlignment alignment)

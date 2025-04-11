@@ -4,7 +4,7 @@
 #include <memory>
 #include <type_traits>
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 /**
  * @brief Deletes the SDL surface using `SDL_FreeSurface`.
