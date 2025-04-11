@@ -2,8 +2,8 @@
 #define TEXT_TEXTURE_H
 
 #include <string>
-#include <SDL.h>
-#include <SDL_ttf.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "texture_base.h"
 

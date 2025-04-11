@@ -1,6 +1,6 @@
 #include "global.h"
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 namespace global
 {
