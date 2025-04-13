@@ -1,0 +1,217 @@
+
+sudo apt install libtool
+sudo apt install libtool-bin
+sudo apt install gcc-arm-linux-gnueabihf build-essential gawk bison texinfo libgmp-dev libmpc-dev libmpfr-dev flex
+sudo apt install debootstrap
+sudo debootstrap --arch=armhf --foreign buster ./arm-rootfs http://deb.debian.org/debian
+  
+# Setup glibc 2.38
+mkdir /build
+cd /build
+wget http://ftp.gnu.org/gnu/libc/glibc-2.38.tar.gz
+tar -xvzf glibc-2.38.tar.gz
+cd glibc-2.38
+mkdir glibc-build
+cd glibc-build
+
+
+export SYSROOT=/usr/arm-linux-gnueabihf  
+export CFLAGS="-O2"
+export CXXFLAGS="-O2"
+
+../glibc-2.38/configure --prefix=/home/arm-glibc-2.38 --sharedstatedir=/home/arm-glibc-2.38/lib --host=arm-linux-gnueabihf --build=x86_64-unknown-linux-gnu --with-headers= /usr/arm-linux-gnueabihf/include --disable-multilib libc_cv_forced_unwind=yes libc_cv_c_cleanup=yes CFLAGS="-O2" CXXFLAGS="-O2"
+
+make -j$(nproc)
+make install
+
+export GLIBC_ARM_PATH=/home/arm-glibc-2.38
+#unsure? export PATH=$GLIBC_ARM_PATH/bin:$PATH
+
+
+# Point to your custom glibc
+export GLIBC_PATH=/home/arm-glibc-2.38
+export SYSROOT=$GLIBC_PATH
+export HOST=arm-linux-gnueabihf
+
+# Toolchain
+export CC=${HOST}-gcc
+export CXX=${HOST}-g++
+export AR=${HOST}-ar
+export AS=${HOST}-as
+export LD=${HOST}-ld
+export RANLIB=${HOST}-ranlib
+export STRIP=${HOST}-strip
+export PKG_CONFIG_PATH=$SYSROOT/lib/pkgconfig:$SYSROOT/usr/lib/pkgconfig
+
+# Flags
+export CFLAGS="--sysroot=$SYSROOT -I$SYSROOT/include"
+export LDFLAGS="--sysroot=$SYSROOT -L$SYSROOT/lib"
+
+# Create workspace
+mkdir -p /build/x11 && cd /build/x11
+
+
+#download 
+wget https://www.x.org/releases/individual/proto/xproto-7.0.31.tar.gz
+tar -xf xproto-7.0.31.tar.gz
+
+
+#Build xproto
+cd /build/x11/xproto-7.0.31
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --enable-shared \
+   --sharedstatedir=/opt/glibc-2.38/lib
+   --host=arm-linux-gnueabihf \
+   --build=x86_64-unknown-linux-gnu \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+   
+./configure --host=x86_64-unknown-linux-gnu --enable-shared --sharedstatedir=/opt/glibc-2.38/lib --host=arm-linux-gnueabihf --build=x86_64-unknown-linux-gnu --prefix=$SYSROOT CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++  CFLAGS="-I$SYSROOT/include" LDFLAGS="-L$SYSROOT/lib"
+
+make install  
+  
+#xcb-proto
+apt-get install -y python3 meson ninja-build pkg-config
+  
+cd /build/x11
+wget https://xorg.freedesktop.org/archive/individual/proto/xcb-proto-1.15.2.tar.gz
+tar -xf xcb-proto-1.15.2.tar.gz
+cd xcb-proto-1.15.2
+
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+   
+make install   
+
+cd /build/x11
+wget https://xorg.freedesktop.org/archive/individual/lib/libXau-1.0.11.tar.gz
+tar -xf libXau-1.0.11.tar.gz
+cd libXau-1.0.11
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+
+make install   
+   
+
+cd /build/x11
+wget https://xorg.freedesktop.org/archive/individual/proto/xextproto-7.3.0.tar.gz
+tar -xf xextproto-7.3.0.tar.gz
+cd xextproto-7.3.0
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+
+make install
+
+cd /build/x11
+wget https://www.x.org/releases/individual/xcb/libxcb-1.15.tar.gz
+tar -xf libxcb-1.15.tar.gz
+cd libxcb-1.15
+export PKG_CONFIG_PATH=/opt/glibc-2.38/lib/pkgconfig:/opt/glibc-2.38/share/pkgconfig
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+
+make install
+
+
+
+
+cd /build/x11
+
+wget https://deb.debian.org/debian/pool/main/x/xtrans/xtrans_1.4.0.orig.tar.gz
+mv xtrans_1.4.0.orig.tar.gz xtrans_1.4.0.tar.gz
+tar -xf xtrans_1.4.0.tar.gz
+cd xtrans-1.4.0
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+make install
+
+
+
+
+cd /build/x11
+wget https://xorg.freedesktop.org/archive/individual/proto/kbproto-1.0.7.tar.gz
+tar -xf kbproto-1.0.7.tar.gz
+cd kbproto-1.0.7
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+make install
+
+
+cd /build/x11
+wget https://xorg.freedesktop.org/archive/individual/proto/inputproto-2.3.2.tar.gz
+tar -xf inputproto-2.3.2.tar.gz
+cd inputproto-2.3.2
+./configure \
+   --host=x86_64-unknown-linux-gnu \
+   --build=arm-linux-gnueabihf \
+   --prefix=$SYSROOT \
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib"
+make install
+
+
+cd /build/x11
+wget https://www.x.org/releases/individual/lib/libX11-1.8.7.tar.gz
+tar -xf libX11-1.8.7.tar.gz
+cd libX11-1.8.7/
+./configure \
+   --disable-tests \
+   --enable-shared \
+   --sharedstatedir=/opt/glibc-2.38/lib
+   --host=arm-linux-gnueabihf \
+   --build=x86_64-unknown-linux-gnu \
+   --prefix=$SYSROOT \
+   --enable-cross-compiling \
+   --disable-memcheck \
+   --enable-malloc0returnsnull\
+   CC=arm-linux-gnueabihf-gcc \
+   CXX=arm-linux-gnueabihf-g++  \
+   CFLAGS="-I$SYSROOT/include" \
+   LDFLAGS="-L$SYSROOT/lib" 
+   
+make install
+
+/opt/glibc-2.38/share/pkgconfig
+/opt/glibc-2.38/lib/pkgconfig/xcb-proto.pc

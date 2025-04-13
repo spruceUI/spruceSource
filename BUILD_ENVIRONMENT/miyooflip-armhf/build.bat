@@ -1,0 +1,1 @@
+docker build -t flip-arm-linux-gnueabihf .
