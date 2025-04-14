@@ -32,6 +32,10 @@ RUN apt-get -y update && apt-get -y install \
 	wget \
   && rm -rf /var/lib/apt/lists/*
 
+RUN dpkg --add-architecture arm64
+RUN apt update
+RUN apt-get -y install libsdl2-dev:arm64
+
 COPY support .
 RUN chmod 777 /setup-toolchain.sh
 RUN chmod 777 /setup-env.sh
