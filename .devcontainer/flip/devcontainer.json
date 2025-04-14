@@ -1,4 +1,10 @@
 {
     "name": "Flip",
-    "build": { "dockerfile": "Dockerfile" }
+    "build": { 
+      "dockerfile": "Dockerfile",
+      "options": [
+        // comment out to use cross-platform toolchain
+        "--platform=linux/arm64"
+      ]
+    }
   }
