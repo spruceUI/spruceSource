@@ -11,8 +11,7 @@ rm -rf ./usr $SYSROOT_TAR.tgz
 
 TOOLCHAIN_ARCH=`uname -m`
 if [ "$TOOLCHAIN_ARCH" = "aarch64" ]; then
-	echo "toolchain is aarch64"
-	TOOLCHAIN_TAR="gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu"
+	echo "toolchain is aarch64, exiting"
 	exit
 fi
 
