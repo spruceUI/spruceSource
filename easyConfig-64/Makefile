@@ -6,7 +6,7 @@ LDFLAGS += -lSDL2 -lSDL2_image -lSDL2_ttf -static-libstdc++
 WARMINGS = -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-include-dirs -Wnoexcept -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wundef
 WARMINGS += -Wold-style-cast -Wmissing-declarations 
 
-export PATH=/opt/a30/bin:$(shell echo $$PATH)
+export PATH=/opt/$(UNION_PLATFORM)/bin:$(shell echo $$PATH)
 
 all: $(TARGET)
 
