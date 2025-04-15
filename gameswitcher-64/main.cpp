@@ -88,7 +88,6 @@ namespace
 			 << "Usage: switcher image_list title_list [-s speed] [-b on|off] [-m on|off] [-t on|off] [-ts speed] [-n on|off] [-d command]" << endl
 			 << endl
 			 << "-s:\timage scrolling speed in frames (default is 20), larger value means slower." << endl
-			 << "-p:\tdevice running the switcher." << endl
 			 << "-b:\tswap left/right buttons for image scrolling (default is off)." << endl
 			 << "-m:\tdisplay title in multiple lines (default is off)." << endl
 			 << "-t:\tdisplay title at start (default is on)." << endl
@@ -147,24 +146,6 @@ namespace
 					printErrorUsageAndExit("-s: Invalue scrolling speed");
 				scrollingFrames = s;
 				i += 2;
-			}
-			else if (strcmp(option, "-p") == 0)
-			{
-				if (i == argc - 1)
-					printErrorUsageAndExit("-p: Missing option value");
-				if (strcmp(argv[i + 1], "Flip") == 0) {
-					global::SCREEN_HEIGHT = 480;
-					global::SCREEN_WIDTH = 640;
-					global::ROTATION = 0;
-				} else if (strcmp(argv[i + 1], "Brick") == 0) {
-					global::SCREEN_HEIGHT = 768;
-					global::SCREEN_WIDTH = 1024;
-					global::ROTATION = 0;
-				} else if (strcmp(argv[i + 1], "SmartPro") == 0) {
-					global::SCREEN_HEIGHT = 720;
-					global::SCREEN_WIDTH = 1280;
-					global::ROTATION = 0;
-				}
 			}
 			else if (strcmp(option, "-b") == 0)
 			{
@@ -767,6 +748,14 @@ int main(int argc, char *argv[])
 	fontTitle = TTF_OpenFont(fontPath.c_str(), fontSize + 4);
 	if (fontInstruction == nullptr || fontTitle == nullptr)
 		printErrorAndExit("Font loading failed: ", TTF_GetError());
+
+	SDL_DisplayMode displayMode;
+	if (SDL_GetCurrentDisplayMode(0, &displayMode) != 0) {
+		printErrorAndExit("SDL_GetCurrentDisplayMode failed: ", SDL_GetError());
+	}
+	global::SCREEN_WIDTH = displayMode.w;
+	global::SCREEN_HEIGHT = displayMode.h;
+	global::ROTATION = 0;
 
 	// Hide cursor before creating the output surface.
 	SDL_ShowCursor(SDL_DISABLE);
