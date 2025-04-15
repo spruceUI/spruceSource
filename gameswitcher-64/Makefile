@@ -1,6 +1,6 @@
 TARGET  = switcher fbfixcolor
 CXXFLAGS  = -I/usr/include/SDL2 
-CXXFLAGS += -pthread -Ofast
+CXXFLAGS += -pthread -O3 -std=gnu++17
 LDFLAGS = -L$(PREFIX)
 LDFLAGS += -lSDL2 -lSDL2_image -lSDL2_ttf -static-libstdc++
 WARMINGS = -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-include-dirs -Wnoexcept -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wundef
