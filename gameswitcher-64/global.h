@@ -5,10 +5,10 @@
 
 namespace global
 {
-    static int SCREEN_WIDTH = 640;
-    static int SCREEN_HEIGHT = 480;
+    extern int SCREEN_WIDTH;
+    extern int SCREEN_HEIGHT;
 
-    static int ROTATION = 0;
+    extern int ROTATION;
 
     extern SDL_Renderer *renderer;
 
