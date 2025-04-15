@@ -9,7 +9,6 @@ namespace global
     extern int SCREEN_HEIGHT;
 
     extern int ROTATION;
-
     extern SDL_Renderer *renderer;
 
 } // namespace constants

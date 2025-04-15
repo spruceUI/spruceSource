@@ -748,7 +748,7 @@ int main(int argc, char *argv[])
 	fontTitle = TTF_OpenFont(fontPath.c_str(), fontSize + 4);
 	if (fontInstruction == nullptr || fontTitle == nullptr)
 		printErrorAndExit("Font loading failed: ", TTF_GetError());
-	
+
 	SDL_DisplayMode displayMode;
 	if (SDL_GetCurrentDisplayMode(0, &displayMode) != 0) {
 		printErrorAndExit("SDL_GetCurrentDisplayMode failed: ", SDL_GetError());

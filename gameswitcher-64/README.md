@@ -2,10 +2,11 @@
 
 Game switcher is a SDL2 program run on 64-bit ARM handheld game consoles. It is used for fast switching between list of games.
 
+
 ```
 Usage: switcher image_list title_list [-s speed] [-b on|off] [-m on|off] [-t on|off] [-ts speed] [-n on|off] [-d command]
 -s: scrolling speed in frames (default is 20), larger value means slower.
--p: platform running the app (to dynamically configure screen).
+
 -b: swap left/right buttons for image scrolling (default is off).
 -m: display title in multiple lines (default is off).
 -t: display title at start (default is on).
