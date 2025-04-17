@@ -463,7 +463,7 @@ namespace
 		auto rect = overlay_bg_render_rect;
 		rect.x = global::SCREEN_WIDTH - overlay_height;
 		rect.w = overlay_height;
-
+		double indexTexture_offset = (2 * global::SCREEN_WIDTH) / 100;
 		if (isDeleteMode) 
 		{
 			// deelete mode - render dimmer background and delete instruction at top of screen
@@ -482,11 +482,11 @@ namespace
 			// normal case - render background and instruction at top of screen
 			SDL_RenderCopy(global::renderer, messageBGTexture, nullptr, &rect);
 			instructionTexture->render();
-			if (isShowItemIndex) indexTexture->render();
+			if (isShowItemIndex) indexTexture->render(indexTexture_offset);
 		}
 		else if (isShowItemIndex)
 		{
-			indexTexture->render();
+			indexTexture->render(indexTexture_offset);
 		}
 	}
 
