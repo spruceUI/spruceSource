@@ -28,7 +28,7 @@ using std::list;
 int scrollingFrames = 20; // how many frames used for image scrolling
 bool isMultilineTitle = false;
 bool isShowDescription = true;
-bool isSwapLeftRight = false;
+bool isSwapLeftRight = true;
 bool isAllowDeletion = true;
 bool isShowItemIndex = true;
 string deleteCommand = "";
