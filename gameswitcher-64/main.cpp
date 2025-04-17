@@ -661,6 +661,7 @@ namespace
 	}
 
 	void joyPress(const SDL_Event &event) {
+
 		if (event.type != SDL_CONTROLLERBUTTONDOWN) return;
 
 		const auto button = event.cbutton.button;
@@ -692,7 +693,7 @@ namespace
 				if (isDeleteMode) return; // disable in delete mode
 				exit(255);
 				break;
-
+        
 			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X:
 				if (!isAllowDeletion) return; // disable if option -d is not set
 				if (isDeleteMode) return; // disable in delete mode
