@@ -61,6 +61,8 @@ string deleteAddonText = "  \u24CE Remove";
 string deleteInstructionText = "Remove Item?   \u24B6 Confirm   \u24B7 Cancel";
 string argumentPlaceholder = "INDEX";
 
+SDL_GameController* joyPad = nullptr;
+
 namespace
 {
 	// trim from start (in place)
@@ -543,8 +545,8 @@ namespace
 		{
 			double easing = easeInOutQuart(offset);
 			SDL_RenderClear(global::renderer);
-			if (showCurrent) curr->renderOffset(0, easing);
-			prev->renderOffset(0, easing - 1);
+			if (showCurrent) curr->renderOffset(easing, 0);
+			prev->renderOffset(easing - 1, 0);
 			int text_alpha = static_cast<int>((i * 255.0) / scrollingFrames);
 			renderTitle(text_alpha);
 			renderInstruction();
@@ -582,8 +584,8 @@ namespace
 		{
 			double easing = easeInOutQuart(offset);
 			SDL_RenderClear(global::renderer);
-			if (showCurrent) curr->renderOffset(0, easing - 1);
-			next->renderOffset(0, easing);
+			if (showCurrent) curr->renderOffset(easing - 1, 0);
+			next->renderOffset(easing, 0);
 			int text_alpha = static_cast<int>((i * 255.0) / scrollingFrames);
 			renderTitle(text_alpha);
 			renderInstruction();
@@ -658,6 +660,105 @@ namespace
 		system(cmd.c_str());
 	}
 
+	void joyPress(const SDL_Event &event) {
+		if (event.type == SDL_CONTROLLERAXISMOTION) {
+			const auto caxis = event.caxis;
+			//Motion on controller 0
+			if ( caxis.which == 0 ) {                        
+				//X axis motion
+				if ( caxis.axis == 0 ) {
+					//Left of dead zone
+					if ( caxis.value < -8008 ) {
+						if (isDeleteMode) return; // disable in delete mode
+						if (isSwapLeftRight) scrollRight(); else scrollLeft();
+						return;
+					}
+					//Right of dead zone
+					else if ( caxis.value > 8008 ) {
+						if (isDeleteMode) return; // disable in delete mode
+						if (isSwapLeftRight) scrollLeft(); else scrollRight();
+						return;
+					}
+					else {
+						return;
+					}
+				}
+			} else {
+				if ( caxis.axis == 0 ) {
+					//Left of dead zone
+					if ( caxis.value < -8008 ) {
+						if (isDeleteMode) return; // disable in delete mode
+						if (isSwapLeftRight) scrollRight(); else scrollLeft();
+						return;
+					}
+					//Right of dead zone
+					else if ( caxis.value > 8008 ) {
+						if (isDeleteMode) return; // disable in delete mode
+						if (isSwapLeftRight) scrollLeft(); else scrollRight();
+						return;
+					}
+					else {
+						return;
+					}
+				}
+			}
+		}
+
+		if (event.type != SDL_CONTROLLERBUTTONDOWN) return;
+
+		const auto button = event.cbutton.button;
+		switch (button) {
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A:
+				if (isDeleteMode) {
+					// delete mode: remove current item when A is pressed
+					isDeleteMode = false; // reset flag to end delete mode
+					int currentIndex = (*currentIter)->getIndex(); // get title of current item first
+					runDeleteCommand(currentIndex);
+					removeCurrentItem();
+				}
+				else {
+					// normal case: exit and return index of current item 
+					exit((*currentIter)->getIndex());
+				}
+				break;
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+				if (isDeleteMode) return; // disable in delete mode
+				if (isSwapLeftRight) scrollRight(); else scrollLeft();
+				break;
+
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+				if (isDeleteMode) return; // disable in delete mode
+				if (isSwapLeftRight) scrollLeft(); else scrollRight();
+				break;
+
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X:
+				if (isDeleteMode) return; // disable in delete mode
+				exit(255);
+				break;
+
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y:
+				if (!isAllowDeletion) return; // disable if option -d is not set
+				if (isDeleteMode) return; // disable in delete mode
+				isDeleteMode = true;
+				isShowDescription = true; // ensure instruction & title is shown
+				break;
+
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+				if (isDeleteMode) return; // disable in delete mode
+				isShowDescription = !isShowDescription;
+				break;
+				
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B:
+				if (isDeleteMode) {
+					// delete mode: cancel delete mode when B is pressed
+					isDeleteMode = false;
+				} else {
+					// normal case: exit with return value 0
+					exit(0);
+				}
+		}
+	}
+
 	void keyPress(const SDL_Event &event)
 	{
 		if (event.type != SDL_KEYDOWN)
@@ -729,7 +830,7 @@ int main(int argc, char *argv[])
 	handleOptions(argc, argv);
 
 	// Init SDL
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER );
 	if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF | IMG_INIT_WEBP) == 0)
 	{
 		printErrorAndExit("IMG_Init failed");
@@ -790,6 +891,12 @@ int main(int argc, char *argv[])
 	updateMessageTexture((*currentIter)->getDescription());
 	if (isShowItemIndex) updateIndexTexture();
 
+	// load joystick
+	if (SDL_NumJoysticks()) {
+		joyPad = SDL_GameControllerOpen(0);
+		if (!joyPad) printErrorAndExit("SDL failed to open joystick");
+	}
+
 	// Execute main loop of the window
 	while (true)
 	{
@@ -804,6 +911,12 @@ int main(int argc, char *argv[])
 				break;
 			case SDL_QUIT:
 				return 0;
+				break;
+			case SDL_CONTROLLERBUTTONDOWN:
+				joyPress(event);
+				break;
+			case SDL_CONTROLLERAXISMOTION:
+				joyPress(event);
 				break;
 			}
 		}
@@ -820,6 +933,7 @@ int main(int argc, char *argv[])
 	}
 
 	// the lines below should never reach, just for code completeness
+	SDL_GameControllerClose(joyPad);
 	SDL_DestroyTexture(messageBGTexture);
 	SDL_DestroyRenderer(global::renderer);
 	TTF_CloseFont(fontInstruction);
