@@ -661,56 +661,14 @@ namespace
 	}
 
 	void joyPress(const SDL_Event &event) {
-		if (event.type == SDL_CONTROLLERAXISMOTION) {
-			const auto caxis = event.caxis;
-			//Motion on controller 0
-			if ( caxis.which == 0 ) {                        
-				//X axis motion
-				if ( caxis.axis == 0 ) {
-					//Left of dead zone
-					if ( caxis.value < -8008 ) {
-						if (isDeleteMode) return; // disable in delete mode
-						if (isSwapLeftRight) scrollRight(); else scrollLeft();
-						return;
-					}
-					//Right of dead zone
-					else if ( caxis.value > 8008 ) {
-						if (isDeleteMode) return; // disable in delete mode
-						if (isSwapLeftRight) scrollLeft(); else scrollRight();
-						return;
-					}
-					else {
-						return;
-					}
-				}
-			} else {
-				if ( caxis.axis == 0 ) {
-					//Left of dead zone
-					if ( caxis.value < -8008 ) {
-						if (isDeleteMode) return; // disable in delete mode
-						if (isSwapLeftRight) scrollRight(); else scrollLeft();
-						return;
-					}
-					//Right of dead zone
-					else if ( caxis.value > 8008 ) {
-						if (isDeleteMode) return; // disable in delete mode
-						if (isSwapLeftRight) scrollLeft(); else scrollRight();
-						return;
-					}
-					else {
-						return;
-					}
-				}
-			}
-		}
 
 		if (event.type != SDL_CONTROLLERBUTTONDOWN) return;
 
 		const auto button = event.cbutton.button;
 		switch (button) {
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A:
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B:
 				if (isDeleteMode) {
-					// delete mode: remove current item when A is pressed
+					// delete mode: remove current item when B is pressed
 					isDeleteMode = false; // reset flag to end delete mode
 					int currentIndex = (*currentIter)->getIndex(); // get title of current item first
 					runDeleteCommand(currentIndex);
@@ -731,12 +689,12 @@ namespace
 				if (isSwapLeftRight) scrollLeft(); else scrollRight();
 				break;
 
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X:
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y:
 				if (isDeleteMode) return; // disable in delete mode
 				exit(255);
 				break;
-
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_Y:
+        
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_X:
 				if (!isAllowDeletion) return; // disable if option -d is not set
 				if (isDeleteMode) return; // disable in delete mode
 				isDeleteMode = true;
@@ -748,9 +706,9 @@ namespace
 				isShowDescription = !isShowDescription;
 				break;
 				
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_B:
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_A:
 				if (isDeleteMode) {
-					// delete mode: cancel delete mode when B is pressed
+					// delete mode: cancel delete mode when A is pressed
 					isDeleteMode = false;
 				} else {
 					// normal case: exit with return value 0
@@ -821,7 +779,6 @@ namespace
 			}
 		}
 	}
-
 }
 
 int main(int argc, char *argv[])
@@ -913,9 +870,6 @@ int main(int argc, char *argv[])
 				return 0;
 				break;
 			case SDL_CONTROLLERBUTTONDOWN:
-				joyPress(event);
-				break;
-			case SDL_CONTROLLERAXISMOTION:
 				joyPress(event);
 				break;
 			}
