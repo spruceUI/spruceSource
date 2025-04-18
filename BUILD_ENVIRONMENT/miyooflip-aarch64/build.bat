@@ -1,0 +1,1 @@
+docker build -t flip-aarch64 .
