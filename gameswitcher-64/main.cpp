@@ -461,11 +461,13 @@ namespace
 	{
 		int overlay_height = fontSize + fontSize / 2;
 		auto rect = overlay_bg_render_rect;
+
 		rect.x = 0;
 		rect.y = global::SCREEN_HEIGHT - overlay_height;
 		rect.w = global::SCREEN_WIDTH;
 		rect.h = overlay_height;
 		double indexTexture_offset = (2.0 * global::SCREEN_WIDTH) / 100.0;
+
 		if (isDeleteMode) 
 		{
 			// deelete mode - render dimmer background and delete instruction at top of screen

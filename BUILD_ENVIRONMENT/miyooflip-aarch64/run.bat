@@ -1,0 +1,1 @@
+docker run -it flip-aarch64 bash
