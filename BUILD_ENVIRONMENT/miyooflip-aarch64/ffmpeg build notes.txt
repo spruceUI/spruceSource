@@ -1,0 +1,61 @@
+sudo apt update
+sudo apt install -y \
+  gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+  pkg-config-crosswrapper \
+  libdrm-dev libgbm-dev libegl1-mesa-dev \
+  crossbuild-essential-arm64
+  
+sudo apt install libdrm-dev:arm64
+
+export SYSROOT=/opt/arm64-sysroot
+export CROSS_PREFIX=aarch64-linux-gnu-
+export PKG_CONFIG_SYSROOT_DIR=$SYSROOT
+export PKG_CONFIG_PATH=$SYSROOT/usr/lib/aarch64-linux-gnu/pkgconfig:$SYSROOT/usr/share/pkgconfig
+export PKG_CONFIG_LIBDIR=$PKG_CONFIG_PATH
+export PKG_CONFIG=pkg-config
+
+export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig 
+export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig 
+export PKG_CONFIG_SYSROOT_DIR=/ 
+export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
+export PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
+export PKG_CONFIG="pkg-config --static"
+
+cd /build
+git clone https://github.com/chrisj951/FFmpeg.git ffmpeg
+git checkout n6.1-debug
+
+./configure \
+  --prefix=/output/arm64-ffmpeg \
+  --cross-prefix=aarch64-linux-gnu- \
+  --arch=aarch64 \
+  --target-os=linux \
+  --enable-cross-compile \
+  --pkg-config=pkg-config \
+  --enable-libdrm \
+  --enable-opengl \
+  --enable-gpl \
+  --extra-cflags="-I/usr/include" \
+  --extra-ldflags="-L/usr/lib/aarch64-linux-gnu"
+  
+  
+  
+make -j$(nproc)
+make install
+
+sudo apt install libgbm-dev:arm64
+cmake .. \
+  -DNOX11=ON \
+  -DGLX_STUBS=ON \
+  -DEGL_WRAPPER=ON \
+  -DGBM=ON \
+  -DCMAKE_SYSROOT=/opt/arm64-sysroot \
+  -DCMAKE_FIND_ROOT_PATH=/opt/arm64-sysroot \
+  -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+  -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+  -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+  -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+  -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+  -DCMAKE_SYSROOT=/usr/aarch64-linux-gnu \
+  -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu
+  
