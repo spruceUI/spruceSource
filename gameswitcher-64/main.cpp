@@ -28,7 +28,7 @@ using std::list;
 int scrollingFrames = 20; // how many frames used for image scrolling
 bool isMultilineTitle = false;
 bool isShowDescription = true;
-bool isSwapLeftRight = true;
+bool isSwapLeftRight = false;
 bool isAllowDeletion = true;
 bool isShowItemIndex = true;
 string deleteCommand = "";
@@ -349,12 +349,12 @@ namespace
 		SDL_Rect overlay_bg_rect = {0, 0, overlay_height, global::SCREEN_HEIGHT};
 		overlay_bg_render_rect.x = 0;//global::SCREEN_WIDTH - overlay_height;
 		overlay_bg_render_rect.y = 0;
-		overlay_bg_render_rect.w = overlay_height;
-		overlay_bg_render_rect.h = global::SCREEN_HEIGHT;
+		overlay_bg_render_rect.w = global::SCREEN_WIDTH;
+		overlay_bg_render_rect.h = overlay_height;
 		SDL_Surface *surfacebg = SDL_CreateRGBSurface(
 			0,
+			global::SCREEN_WIDTH,
 			overlay_height,
-			global::SCREEN_HEIGHT,
 			32, 0, 0, 0, 0);
 		SDL_FillRect(
 			surfacebg,
@@ -426,8 +426,8 @@ namespace
 		{
 			overlay_bg_render_rect.x = 0; //global::SCREEN_WIDTH - titleTexture->getHeight();
 			overlay_bg_render_rect.y = 0;
-			overlay_bg_render_rect.w = titleTexture->getHeight();
-			overlay_bg_render_rect.h = global::SCREEN_HEIGHT;
+			overlay_bg_render_rect.w = global::SCREEN_WIDTH;
+			overlay_bg_render_rect.h = titleTexture->getHeight();
 		}
 	}
 
@@ -461,9 +461,11 @@ namespace
 	{
 		int overlay_height = fontSize + fontSize / 2;
 		auto rect = overlay_bg_render_rect;
-		rect.x = global::SCREEN_WIDTH - overlay_height;
-		rect.w = overlay_height;
-		double indexTexture_offset = (2 * global::SCREEN_WIDTH) / 100;
+		rect.x = 0;
+		rect.y = global::SCREEN_HEIGHT - overlay_height;
+		rect.w = global::SCREEN_WIDTH;
+		rect.h = overlay_height;
+		double indexTexture_offset = (2.0 * global::SCREEN_WIDTH) / 100.0;
 		if (isDeleteMode) 
 		{
 			// deelete mode - render dimmer background and delete instruction at top of screen
@@ -654,6 +656,7 @@ namespace
 			// make the replacement
 			cmd.replace(index, argumentPlaceholder.length(), currentIndexText);
 			// advance index forward
+			break;
 			index += currentIndexText.length();
 		}
 		// run the cmd
@@ -679,12 +682,12 @@ namespace
 					exit((*currentIter)->getIndex());
 				}
 				break;
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
 				if (isDeleteMode) return; // disable in delete mode
 				if (isSwapLeftRight) scrollRight(); else scrollLeft();
 				break;
 
-			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT:
 				if (isDeleteMode) return; // disable in delete mode
 				if (isSwapLeftRight) scrollLeft(); else scrollRight();
 				break;
