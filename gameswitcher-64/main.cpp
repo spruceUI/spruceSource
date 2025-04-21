@@ -52,14 +52,17 @@ TextTexture *indexTexture = nullptr;
 SDL_Rect overlay_bg_render_rect = {0, 0, 0, 0};
 bool isScrollingTitle = false;
 bool isDeleteMode = false;
+bool isAllowLoad = true;
 int scrollingOffset = 0;  // current title scrolling offset
 int scrollingLength = 0;  // length of scrolling title with space
 int scrollingPause = 10;  // number of frames to pause when text touch left screen boundary
 string instructionText = " \u2190/\u2192 Scroll   \u24B6 Load   \u24B7 Exit   \u24CD Settings";
 string shortInstructionText = "\u24B6 Load  \u24B7 Exit  \u24CD Settings";
+string emptyInstructionText = "\u24B7 Exit    \u24CD Settings";
 string deleteAddonText = "  \u24CE Remove";
 string deleteInstructionText = "Remove Item?   \u24B6 Confirm   \u24B7 Cancel";
 string argumentPlaceholder = "INDEX";
+string emptyImageFile = "/mnt/sdcard/spruce/settings/gs_empty.png";
 
 SDL_GameController* joyPad = nullptr;
 
@@ -260,7 +263,12 @@ namespace
 
 				// skip empty line
 				if (line.empty()) continue;
-
+				// hack to render empty gs list on startup
+				if (strcmp(line.c_str(), emptyImageFile.c_str()) == 0) {
+					isAllowLoad = false;
+					isAllowDeletion = false;
+					isShowItemIndex = false;
+				}
 				// create imageItem and add to list
 				imageItems.push_back(new ImageItem(index, line, rotation));
 				
@@ -368,7 +376,7 @@ namespace
 		SDL_FreeSurface(surfacebg);
 
 		// create texture for instruction text
-		string text = shortInstructionText; //isShowItemIndex ? shortInstructionText : instructionText;
+		string text = isAllowLoad ? shortInstructionText : emptyInstructionText;
 		if (isAllowDeletion) text += deleteAddonText; 
 		instructionTexture = new TextTexture(
 			text,
@@ -480,6 +488,15 @@ namespace
 			SDL_SetTextureAlphaMod(messageBGTexture, old_alpha);
 			// render delete instruction text
 			deleteInstructionTexture->render();
+		} else if (!isAllowLoad) {
+			auto emptyTexture = new TextTexture(
+				emptyInstructionText,
+				fontInstruction,
+				text_color,
+				TextTextureAlignment::bottomCenter
+			);
+			SDL_RenderCopy(global::renderer, messageBGTexture, nullptr, &rect);
+			emptyTexture->render(indexTexture_offset);
 		}
 		else if (isShowDescription)
 		{
@@ -625,8 +642,54 @@ namespace
 		// get current iterator
 		auto iter = currentIter;
 
-		// if no more item in list after removing current item, exit with value 0
-		if (imageItems.size() == 1) exit(0);
+		// if no more item in list after removing current item, show empty gs
+		if (imageItems.size() == 1) {
+			isAllowDeletion = false;
+			isAllowLoad = false;
+			isShowItemIndex = false;
+
+			imageItems.push_back(new ImageItem(imageItems.size() + 1, emptyImageFile, global::ROTATION));
+
+			ImageItem *curr = *iter;
+			auto nextIter = currentIter;
+			nextIter++;
+			ImageItem *next = *nextIter;
+			titleTexture = new TextTexture(
+				"No games in list",
+				fontTitle,
+				text_color,
+				TextTextureAlignment::topCenter
+			);
+			next->loadImage();
+			next->createTexture();
+			imageItems.remove(*iter);
+			// scroll images
+			double offset = 1.0;
+			double step = 1.0 / scrollingFrames;
+			for (int i = 0; i < scrollingFrames; i++)
+			{
+				double easing = easeInOutQuart(offset);
+				SDL_RenderClear(global::renderer);
+				curr->renderOffset(easing - 1, 0);
+				next->renderOffset(easing, 0);
+				int text_alpha = static_cast<int>((i * 255.0) / scrollingFrames);
+				renderTitle(text_alpha);
+				renderInstruction();
+				offset -= step;
+				SDL_RenderPresent(global::renderer);
+				SDL_Delay(30);
+			}
+
+			next->renderOffset(0, 0);
+
+			renderTitle(255);
+			renderInstruction();
+		
+			SDL_RenderPresent(global::renderer);
+			// update iterator
+			currentIter = nextIter;
+			return;
+		}
 
 		// scroll the next item without showing the current item
 		scrollRight(false);
@@ -679,18 +742,18 @@ namespace
 					runDeleteCommand(currentIndex);
 					removeCurrentItem();
 				}
-				else {
+				else if (isAllowLoad) {
 					// normal case: exit and return index of current item 
 					exit((*currentIter)->getIndex());
-				}
+				} else { return; }
 				break;
 			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-				if (isDeleteMode) return; // disable in delete mode
+				if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 				if (isSwapLeftRight) scrollRight(); else scrollLeft();
 				break;
 
 			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-				if (isDeleteMode) return; // disable in delete mode
+				if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 				if (isSwapLeftRight) scrollLeft(); else scrollRight();
 				break;
 
@@ -707,7 +770,7 @@ namespace
 				break;
 
 			case SDL_GameControllerButton::SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-				if (isDeleteMode) return; // disable in delete mode
+				if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 				isShowDescription = !isShowDescription;
 				break;
 				
@@ -738,19 +801,19 @@ namespace
 				runDeleteCommand(currentIndex);
 				removeCurrentItem();
 			}
-			else {
+			else if (isAllowLoad) {
 				// normal case: exit and return index of current item 
 				exit((*currentIter)->getIndex());
-			}
+			} else { return; }
 			break;
 		// button LEFT (Left arrow key)
 		case SDLK_LEFT:
-			if (isDeleteMode) return; // disable in delete mode
+			if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 			if (isSwapLeftRight) scrollRight(); else scrollLeft();
 			break;
 		// button RIGHT (Right arrow key)
 		case SDLK_RIGHT:
-			if (isDeleteMode) return; // disable in delete mode
+			if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 			if (isSwapLeftRight) scrollLeft(); else scrollRight();
 			break;
 		// button X (Left Shift key)
@@ -767,7 +830,7 @@ namespace
 			break;
 		// button R1 (Backspace key)
 		case SDLK_BACKSPACE:
-			if (isDeleteMode) return; // disable in delete mode
+			if (isDeleteMode || !isAllowLoad) return; // disable in delete mode
 			isShowDescription = !isShowDescription;
 			break;
 		}
@@ -816,8 +879,8 @@ int main(int argc, char *argv[])
 	if (SDL_GetCurrentDisplayMode(0, &displayMode) != 0) {
 		printErrorAndExit("SDL_GetCurrentDisplayMode failed: ", SDL_GetError());
 	}
-	global::SCREEN_WIDTH = displayMode.w;
-	global::SCREEN_HEIGHT = displayMode.h;
+	global::SCREEN_WIDTH = 640;
+	global::SCREEN_HEIGHT = 480;
 	global::ROTATION = 0;
 
 	// Hide cursor before creating the output surface.
