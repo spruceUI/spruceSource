@@ -1,4 +1,4 @@
-TARGET  = getevent sendevent joystickinput joypad setlcdbl devlogger setsharedmem
+TARGET  = getevent sendevent joystickinput joypad setlcdbl devlogger setsharedmem setsharedmem-flip
 
 WARMINGS = -pedantic -Wall -Wextra -Wcast-align -Wcast-qual -Wdisabled-optimization -Wformat=2 -Winit-self -Wlogical-op -Wmissing-include-dirs  -Wredundant-decls -Wshadow -Wsign-conversion -Wstrict-overflow=5 -Wundef
 WARMINGS += -Wmissing-declarations 
@@ -9,6 +9,9 @@ all: $(TARGET)
 
 setsharedmem: setsharedmem.c
 	$(CROSS_COMPILE)gcc  setsharedmem.c -o setsharedmem -O3 $(WARMINGS)
+
+setsharedmem-flip: setsharedmem-flip.c
+	$(CROSS_COMPILE)gcc  setsharedmem-flip.c -o setsharedmem-flip -O3 $(WARMINGS)
 
 devlogger: devlogger.c
 	$(CROSS_COMPILE)gcc  devlogger.c -o devlogger -O3 $(WARMINGS)
