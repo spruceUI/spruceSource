@@ -8,9 +8,9 @@ PLATFORM=linux
 endif
 
 # Compiler settings
-CXX := /opt/aarch64-toolchain/miyoo355_sdk_release/host/bin/aarch64-buildroot-linux-gnu-g++
-CXXFLAGS += -Os -I/opt/aarch64-toolchain/miyoo355_sdk_release/host/aarch64-buildroot-linux-gnu/sysroot/usr/include/SDL2
-LINKFLAGS = -L/opt/aarch64-toolchain/miyoo355_sdk_release/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib -pthread -lSDL2 -lSDL2_image -lSDL2_ttf
+CXX := $(CROSS_COMPILE)g++
+CXXFLAGS += -Os -I/usr/include/SDL2
+LINKFLAGS = -L/usr/lib -pthread -lSDL2 -lSDL2_image -lSDL2_ttf
 
 ifeq ($(PLATFORM),miyoomini)
 CXXFLAGS += -marm -mtune=cortex-a55 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv8.2-a+simd

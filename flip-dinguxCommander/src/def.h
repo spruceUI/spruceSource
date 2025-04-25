@@ -14,7 +14,7 @@
 #endif
 
 // Panel
-#define HEADER_H 24//17
+#define HEADER_H 26//17
 #define HEADER_H_PHYS static_cast<int>(HEADER_H * screen.ppu_y)
 #define HEADER_PADDING_TOP 4
 #define HEADER_PADDING_TOP_PHYS static_cast<int>(HEADER_PADDING_TOP * screen.ppu_y)
@@ -27,7 +27,7 @@
 #define Y_LIST HEADER_H
 #define Y_LIST_PHYS static_cast<int>(Y_LIST * screen.ppu_y)
 
-#define LINE_HEIGHT 22//15
+#define LINE_HEIGHT 21//15
 #define LINE_HEIGHT_PHYS static_cast<int>(LINE_HEIGHT * screen.ppu_y)
 #define NB_VISIBLE_LINES ((screen.actual_h - FOOTER_H_PHYS - HEADER_H_PHYS - 1) / LINE_HEIGHT_PHYS + 1)
 #define NB_FULLY_VISIBLE_LINES ((screen.actual_h - FOOTER_H_PHYS - HEADER_H_PHYS) / LINE_HEIGHT_PHYS)

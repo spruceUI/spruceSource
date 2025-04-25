@@ -15,10 +15,10 @@
 
 #define VIEWER_PADDING_X 1
 #define VIEWER_PADDING_X_PHYS static_cast<int>(VIEWER_PADDING_X * screen.ppu_x)
-#define VIEWER_LINE_HEIGHT 13
+#define VIEWER_LINE_HEIGHT 20
 #define VIEWER_LINE_HEIGHT_PHYS                                                \
     static_cast<int>(VIEWER_LINE_HEIGHT * screen.ppu_y)
-#define VIEWER_Y_LIST 17
+#define VIEWER_Y_LIST 24
 #define VIEWER_Y_LIST_PHYS static_cast<int>(VIEWER_Y_LIST * screen.ppu_y)
 #define VIEWER_X_STEP 32
 #define VIEWER_X_STEP_PHYS static_cast<int>(VIEWER_X_STEP * screen.ppu_x)

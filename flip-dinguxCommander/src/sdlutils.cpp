@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include <SDL_image.h>
-#ifdef USE_SDL2
+#ifndef USE_SDL2
 #include <SDL2_rotozoom.h>
 #else
 #include "SDL_rotozoom.h"

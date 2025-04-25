@@ -24,11 +24,11 @@ static std::string kSpace = " ";
 static std::string kTab = "\t";
 
 constexpr std::size_t kKeyBorderW = 1;
-constexpr std::size_t kMaxKeyW = 19 + kKeyBorderW;
-constexpr std::size_t kMaxKeyH = 17 + kKeyBorderW;
+constexpr std::size_t kMaxKeyW = 23 + kKeyBorderW;
+constexpr std::size_t kMaxKeyH = 23 + kKeyBorderW;
 constexpr std::size_t kMaxKeyGap = 2;
 constexpr std::size_t kFrameBorder = 2;
-constexpr std::size_t kTextFieldHeight = 19;
+constexpr std::size_t kTextFieldHeight = 24;
 constexpr std::size_t kTextFieldMarginBottom = 2;
 constexpr std::size_t kTextFieldBorder = 2;
 
