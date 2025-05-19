@@ -12,6 +12,7 @@ int SLEEP_TIMEOUT = 300;  // Default inactivity timeout in seconds
 int CHECK_INTERVAL = 60;  // Default check interval in seconds
 char command_to_execute[256];  // Buffer for the command to execute
 int include_process_name = 0;  // Flag to check if -i is provided
+char input_event_path[64] = "/dev/input/event3"; // Default event device
 
 typedef struct {
     char *process_name;    
@@ -20,13 +21,14 @@ typedef struct {
 
 // Function to display help text
 void display_help(const char *program_name) {
-    printf("Usage: %s -p process_name1,process_name2,... [-t timeout] [-c check_interval] [-i] -s script_command\n", program_name);
+    printf("Usage: %s -p process_name1,process_name2,... [-t timeout] [-c check_interval] [-i] [-e event_device] -s script_command\n", program_name);
     printf("Options:\n");
     printf("  -p process_names: Specify the names of the processes to monitor (comma-separated).\n");
     printf("  -t timeout: Optional timeout in seconds (default is 300 seconds).\n");
     printf("  -c check_interval: Optional check interval in seconds (default is 60 seconds).\n");
     printf("  -s script_command: Mandatory script or command to execute when the timeout threshold is met.\n");
     printf("  -i: Optional flag. If provided, passes the process name as an argument to the script command.\n");
+    printf("  -e event_device: Optional input event device path (default is /dev/input/event3).\n");
 }
 
 // Function to check if the specified process is running
@@ -40,7 +42,7 @@ int is_process_running(const char *process_name) {
 void *monitor_input_events(void *arg) {
     ProcessInfo *process_info = (ProcessInfo *)arg;
     char buffer[256];
-    int fd = open("/dev/input/event3", O_RDONLY);
+    int fd = open(input_event_path, O_RDONLY);
     if (fd == -1) {
         perror("Error opening event device");
         return NULL;
@@ -92,12 +94,11 @@ void *monitor_process(void *arg) {
                 sleep(CHECK_INTERVAL);
             }
 
-            // Inactivity timer met
+            // Inactivity timer met or process ended
             printf("%s idle threshold met or is no longer running. Resetting idle counter...\n", process_info->process_name);
             pthread_cancel(monitor_thread);  // Stop monitoring input events
             pthread_join(monitor_thread, NULL); // Ensure the thread has finished
         } else {
-            // printf("Waiting for %s to start...\n", process_info->process_name);
             sleep(CHECK_INTERVAL);
         }
     }
@@ -106,10 +107,10 @@ void *monitor_process(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-    // Parse command-line arguments for -p (process names), -t (timeout), -c (check interval), -s (script/command), and -i (optional flag)
+    // Parse command-line arguments for -p (process names), -t (timeout), -c (check interval), -s (script/command), -i (optional flag), -e (event device)
     int opt;
     char *process_names_str = NULL;
-    while ((opt = getopt(argc, argv, "p:t:c:s:i")) != -1) {
+    while ((opt = getopt(argc, argv, "p:t:c:s:ie:")) != -1) {
         switch (opt) {
             case 'p':
                 process_names_str = optarg; // Set the process names (comma-separated)
@@ -125,6 +126,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'i':
                 include_process_name = 1; // Enable passing process name as argument
+                break;
+            case 'e':
+                snprintf(input_event_path, sizeof(input_event_path), "%s", optarg); // Set custom input device
                 break;
             default:
                 display_help(argv[0]); // Display help if options are invalid
