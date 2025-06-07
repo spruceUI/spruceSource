@@ -5,12 +5,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <sstream>
 
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -444,42 +446,44 @@ const unsigned long int File_utils::getFileSize(const std::string &p_file)
 
 void File_utils::diskInfo(void)
 {
-    std::string l_line("");
     SDL_utils::pleaseWait();
-    // Execute command df -h
+
+    struct statvfs stat;
+    if (statvfs(FILE_SYSTEM, &stat) != 0)
     {
-        char l_buffer[256];
-        FILE *l_pipe = popen("df -h " FILE_SYSTEM, "r");
-        if (l_pipe == NULL)
+        ErrorDialog("Error getting disk info", std::strerror(errno));
+        return;
+    }
+
+    // Calculate size, free, used in bytes
+    unsigned long long total = stat.f_blocks * stat.f_frsize;
+    unsigned long long free = stat.f_bfree * stat.f_frsize;
+    unsigned long long used = total - free;
+
+    // Convert to human readable strings (e.g. GB, MB)
+    auto humanReadable = [](unsigned long long bytes) -> std::string {
+        const char* sizes[] = {"B", "KB", "MB", "GB", "TB"};
+        int i = 0;
+        double dblBytes = static_cast<double>(bytes);
+        while (dblBytes >= 1024 && i < 4)
         {
-            ErrorDialog("Error getting disk info", std::strerror(errno));
-            return;
+            dblBytes /= 1024;
+            i++;
         }
-        while (
-            l_line.empty() && fgets(l_buffer, sizeof(l_buffer), l_pipe) != NULL)
-            if (strstr(l_buffer, FILE_SYSTEM) != NULL) l_line = l_buffer;
-        pclose(l_pipe);
-    }
-    if (!l_line.empty())
-    {
-        // Separate line by spaces
-        std::istringstream l_iss(l_line);
-        std::vector<std::string> l_tokens;
-        std::copy(std::istream_iterator<std::string>(l_iss),
-            std::istream_iterator<std::string>(),
-            std::back_inserter<std::vector<std::string>>(l_tokens));
-        // Display dialog
-        CDialog l_dialog{"Disk information:"};
-        l_dialog.addLabel("Size: " + l_tokens[1]);
-        l_dialog.addLabel("Used: " + l_tokens[2] + " (" + l_tokens[4] + ")");
-        l_dialog.addLabel("Available: " + l_tokens[3]);
-        l_dialog.addOption("OK");
-        l_dialog.init();
-        l_dialog.execute();
-    }
-    else
-        ErrorDialog(
-            "Error getting disk info", std::string(FILE_SYSTEM) + " not found");
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << dblBytes << " " << sizes[i];
+        return oss.str();
+    };
+
+    double percentUsed = total > 0 ? (used * 100.0 / total) : 0.0;
+
+    CDialog l_dialog{"Disk information:"};
+    l_dialog.addLabel("Size: " + humanReadable(total));
+    l_dialog.addLabel("Used: " + humanReadable(used) + " (" + std::to_string((int)percentUsed) + "%)");
+    l_dialog.addLabel("Available: " + humanReadable(free));
+    l_dialog.addOption("OK");
+    l_dialog.init();
+    l_dialog.execute();
 }
 
 void File_utils::diskUsed(const std::vector<std::string> &p_files)
