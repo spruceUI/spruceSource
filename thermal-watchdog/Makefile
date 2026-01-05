@@ -9,6 +9,6 @@
 	 docker cp $(DOCKER_IMAGE):/$(BINARY) .
  
  clean:
-	 docker rmi --force thermal_watchdog
-	 docker rm --force thermal_watchdog
+	 docker rmi --force $(DOCKER_IMAGE)
+	 docker rm --force $(DOCKER_IMAGE)
 	 rm -f $(BINARY)
