@@ -4,8 +4,8 @@ use std::{
     fs, collections::HashMap, path::PathBuf, sync::{Arc, RwLock}
 };
 
-const PROFILES_DIR: &str = "/mnt/SDCARD/spruce/etc/thermal-watchdog/profiles";
-const ACTIVE_PROFILE_PATH: &str = "/mnt/SDCARD/spruce/etc/thermal-watchdog/active_profile";
+const PROFILES_DIR: &str = "/mnt/SDCARD/spruce/smartpros/etc/thermal-watchdog/profiles";
+const ACTIVE_PROFILE_PATH: &str = "/mnt/SDCARD/spruce/smartpros/etc/thermal-watchdog/active_profile";
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FanCurvePoint {
