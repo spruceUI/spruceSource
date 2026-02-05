@@ -1,0 +1,125 @@
+diff --git a/kmsgrab.c b/kmsgrab.c
+index 596baac..82e2df9 100644
+--- a/kmsgrab.c
++++ b/kmsgrab.c
+@@ -3,6 +3,7 @@
+  * KMS/DRM screenshot tool
+  *
+  * Copyright (c) 2021 Paul Cercueil <paul@crapouillou.net>
++ * Modified for A523 (TrimUI Smart Pro) support
+  */
+ 
+ #include <drm.h>
+@@ -77,8 +78,9 @@ static int save_png(drmModeFB *fb, int prime_fd, const char *png_fn)
+ 	if (!picture)
+ 		return -ENOMEM;
+ 
++	/* Modified: MAP_SHARED is required for A523/TSP S */
+ 	buffer = mmap(NULL, (fb->bpp >> 3) * fb->width * fb->height,
+-		      PROT_READ, MAP_PRIVATE, prime_fd, 0);
++		      PROT_READ, MAP_SHARED, prime_fd, 0);
+ 	if (buffer == MAP_FAILED) {
+ 		ret = -errno;
+ 		fprintf(stderr, "Unable to mmap prime buffer\n");
+@@ -126,7 +128,7 @@ static int save_png(drmModeFB *fb, int prime_fd, const char *png_fn)
+ 
+ 	// And save the final image
+ 	for (i = 0; i < fb->height; i++)
+-		row_pointers[i] = picture + i * fb->width * 3;
++		row_pointers[i] = (png_bytep)(picture + i * fb->width * 3);
+ 
+ 	png_write_image(png, row_pointers);
+ 	png_write_end(png, info);
+@@ -151,7 +153,7 @@ int main(int argc, char **argv)
+ {
+ 	int err, drm_fd, prime_fd, retval = EXIT_FAILURE;
+ 	unsigned int i, card;
+-	uint32_t fb_id, crtc_id;
++	uint32_t fb_id = 0, crtc_id = 0;
+ 	drmModePlaneRes *plane_res;
+ 	drmModePlane *plane;
+ 	drmModeFB *fb;
+@@ -163,14 +165,12 @@ int main(int argc, char **argv)
+ 		goto out_return;
+ 	}
+ 
+-	for (card = 0; ; card++) {
++	for (card = 0; card < 5; card++) {
+ 		snprintf(buf, sizeof(buf), "/dev/dri/card%u", card);
+ 
+ 		drm_fd = open(buf, O_RDWR | O_CLOEXEC);
+-		if (drm_fd < 0) {
+-			fprintf(stderr, "Could not open KMS/DRM device.\n");
+-			goto out_return;
+-		}
++		if (drm_fd < 0)
++			continue;
+ 
+ 		if (drmGetCap(drm_fd, DRM_CAP_DUMB_BUFFER, &has_dumb) >= 0 &&
+ 		    has_dumb)
+@@ -179,21 +179,12 @@ int main(int argc, char **argv)
+ 		close(drm_fd);
+ 	}
+ 
+-	drm_fd = open(buf, O_RDWR | O_CLOEXEC);
+-	if (drm_fd < 0) {
+-		fprintf(stderr, "Could not open KMS/DRM device.\n");
++	if (card == 5) {
++		fprintf(stderr, "Could not find a valid DRM device.\n");
+ 		goto out_return;
+ 	}
+ 
+-	if (drmSetClientCap(drm_fd, DRM_CLIENT_CAP_ATOMIC, 1)) {
+-		fprintf(stderr, "Unable to set atomic cap.\n");
+-		goto out_close_fd;
+-	}
+-
+-	if (drmSetClientCap(drm_fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1)) {
+-		fprintf(stderr, "Unable to set universal planes cap.\n");
+-		goto out_close_fd;
+-	}
++	drmSetClientCap(drm_fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
+ 
+ 	plane_res = drmModeGetPlaneResources(drm_fd);
+ 	if (!plane_res) {
+@@ -203,16 +194,20 @@ int main(int argc, char **argv)
+ 
+ 	for (i = 0; i < plane_res->count_planes; i++) {
+ 		plane = drmModeGetPlane(drm_fd, plane_res->planes[i]);
++		if (!plane)
++			continue;
++
+ 		fb_id = plane->fb_id;
+ 		crtc_id = plane->crtc_id;
+ 		drmModeFreePlane(plane);
+ 
+-		if (fb_id != 0 && crtc_id != 0)
++		/* Modified: Primary plane might not have a crtc_id on some planes */
++		if (fb_id != 0)
+ 			break;
+ 	}
+ 
+-	if (i == plane_res->count_planes) {
+-		fprintf(stderr, "No planes found\n");
++	if (fb_id == 0) {
++		fprintf(stderr, "No active framebuffers found on planes\n");
+ 		goto out_free_resources;
+ 	}
+ 
+@@ -226,7 +221,7 @@ int main(int argc, char **argv)
+ 	err = drmPrimeHandleToFD(drm_fd, fb->handle, O_RDONLY, &prime_fd);
+ 	if (err < 0) {
+ 		fprintf(stderr, "Failed to retrieve prime handler: %s\n",
+-			strerror(-err));
++			strerror(errno));
+ 		goto out_free_fb;
+ 	}
+ 
+@@ -237,6 +232,7 @@ int main(int argc, char **argv)
+ 		goto out_close_prime_fd;
+ 	}
+ 
++	printf("Screenshot saved to %s (FB ID: %u, %ux%u)\n", argv[1], fb_id, fb->width, fb->height);
+ 	retval = EXIT_SUCCESS;
+ 
+ out_close_prime_fd:
