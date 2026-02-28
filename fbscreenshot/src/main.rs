@@ -85,18 +85,18 @@ fn fbscreenshot(output: &str, rotation: Rotation) -> Result<(), Box<dyn std::err
     let line_length = width_virtual as usize * bytes_per_pixel;
     let fb_size = line_length * height as usize;
     let mut fb_data = vec![0u8; fb_size];
-    fb_file.read_exact(&mut fb_data)?;
+    let _ = fb_file.read(&mut fb_data)?;
     
     let img: RgbaImage = ImageBuffer::from_fn(width, height, |x, y| {
         let idx = (y as usize * line_length) + (x as usize * bytes_per_pixel);
         
         if bpp == 32 {
-            let b = fb_data[idx];
-            let g = fb_data[idx + 1];
-            let r = fb_data[idx + 2];
-            let a = fb_data[idx + 3];
+            let b = fb_data.get(idx).cloned().unwrap_or(0);
+            let g = fb_data.get(idx + 1).cloned().unwrap_or(0);
+            let r = fb_data.get(idx + 2).cloned().unwrap_or(0);
+            let _a = fb_data.get(idx + 3).cloned().unwrap_or(255);
             
-            image::Rgba([r, g, b, a])
+            image::Rgba([r, g, b, 255])
         } else if bpp == 16 {
             let pixel = u16::from_le_bytes([fb_data[idx], fb_data[idx + 1]]);
             let r = ((pixel >> 11) & 0x1F) as u8;
@@ -131,7 +131,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match fbscreenshot(&args.output, args.rotation) {
         Ok(()) => {
             println!("fbscreenshot: Saved screenshot to '{}'", &args.output);
-            Ok(())
+            unsafe { nix::libc::_exit(0); }
         }
         Err(e) => {
             eprintln!("fbscreenshot: Failed saving screenshot to '{}': {e}", &args.output);
