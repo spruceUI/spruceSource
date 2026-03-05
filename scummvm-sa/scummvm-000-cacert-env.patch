@@ -1,0 +1,26 @@
+diff --git a/backends/networking/basic/curl/cacert.cpp b/backends/networking/basic/curl/cacert.cpp
+index 24ced7fa..8c09fe0e 100644
+--- a/backends/networking/basic/curl/cacert.cpp
++++ b/backends/networking/basic/curl/cacert.cpp
+@@ -20,12 +20,21 @@
+  */
+ 
+ #include "backends/networking/basic/curl/cacert.h"
++#include <stdlib.h>
++
++#ifdef getenv
++#undef getenv
++#endif
+ 
+ #include "common/fs.h"
+ 
+ namespace Networking {
+ 
+ Common::String getCaCertPath() {
++	const char *envPath = getenv("CURL_CA_BUNDLE");
++	if (envPath && *envPath) {
++		return Common::String(envPath);
++	}
+ #if defined(DATA_PATH)
+ 	static enum {
+ 		kNotInitialized,
