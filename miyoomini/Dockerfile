@@ -26,6 +26,7 @@ WORKDIR /src
 COPY set_monitor.c .
 COPY send_event.c .
 COPY evtest_getevent_wrapper.c .
+COPY axp_read.c .
 
 # Build the binary
 RUN gcc -Os -s -o set_monitor set_monitor.c -ldl -lpthread
@@ -36,7 +37,11 @@ RUN gcc -Os -s -o send_event send_event.c -ldl -lpthread
 # Build the getevent binary
 RUN gcc -Os -s -o getevent evtest_getevent_wrapper.c -ldl -lpthread
 
+# Build the axp_read binary
+RUN gcc -Os -s -Wall -Wextra -o axp_read axp_read.c
+
 # Default command (verify binary)
 CMD ["file", "./set_monitor"]
 CMD ["file", "./send_event"]
 CMD ["file", "./getevent"]
+CMD ["file", "./axp_read"]
